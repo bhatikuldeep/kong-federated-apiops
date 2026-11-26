@@ -26,10 +26,11 @@
     .kbd-pill { fill: var(--entry, #ffffff); }
     .kbd-badge { fill: var(--primary, #111418); }
     .kbd-bt { fill: var(--entry, #ffffff); font-size: 15px; font-weight: 700; text-anchor: middle; }
-    .kbd-w { fill: none; stroke: var(--primary, #111418); stroke-width: 2.2; stroke-linejoin: round; }
-    .kbd-u { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 1.8; stroke-linejoin: round; }
-    .kbd-r { fill: none; stroke: var(--accent, #007a52); stroke-width: 2; stroke-dasharray: 7 5; stroke-linejoin: round; }
-    .kbd-o { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 1.8; stroke-dasharray: 7 5; stroke-linejoin: round; }
+    .kbd-w { fill: none; stroke: var(--primary, #111418); stroke-width: 3; stroke-linejoin: round; }
+    .kbd-u { fill: none; stroke: #6366f1; stroke-width: 2; stroke-linejoin: round; }
+    .kbd-r { fill: none; stroke: var(--accent, #007a52); stroke-width: 2.4; stroke-dasharray: 12 7; stroke-linejoin: round; }
+    .kbd-o { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 2.4; stroke-dasharray: 1 6; stroke-linecap: round; stroke-linejoin: round; }
+    .dark .kbd-u { stroke: #818cf8; }
     .kbd-warn { fill: var(--entry, #ffffff); stroke: #c2410c; stroke-width: 1.5; }
     .kbd-tw { fill: #c2410c; font-size: 22px; font-weight: 600; text-anchor: middle; }
     .kbd-lg { fill: var(--secondary, #4a4f57); font-size: 15px; }
@@ -43,7 +44,8 @@
     <marker id="kbd-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
     <marker id="kbd-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
     <marker id="kbd-mw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
-    <marker id="kbd-mu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #8a8f98)"/></marker>
+    <marker id="kbd-mu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
+    <marker id="kbd-mo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #8a8f98)"/></marker>
     <marker id="kbd-mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
   </defs>
   <rect class="kbd-bg" x="0" y="0" width="1220" height="700" rx="16"/>
@@ -96,10 +98,10 @@
   <text class="kbd-s" x="190" y="668" text-anchor="middle"></text>
   <path class="kbd-w" d="M220,354 L220,426" marker-end="url(#kbd-mw)"/>
   <path class="kbd-w" d="M1027,354 L1027,548" marker-end="url(#kbd-mw)"/>
-  <path class="kbd-w" d="M30,676 L70,676" marker-end="url(#kbd-mw)"/>
-  <text class="kbd-lg" x="82" y="681" text-anchor="start">writes / deploys</text>
-  <path class="kbd-u" d="M253.6,676 L293.6,676" marker-end="url(#kbd-mu)"/>
-  <text class="kbd-lg" x="305.6" y="681" text-anchor="start">uses</text>
+  <path class="kbd-w" d="M30,676 L90,676" marker-end="url(#kbd-mw)"/>
+  <text class="kbd-lg" x="102" y="681" text-anchor="start">writes / deploys</text>
+  <path class="kbd-u" d="M279.6,676 L339.6,676" marker-end="url(#kbd-mu)"/>
+  <text class="kbd-lg" x="351.6" y="681" text-anchor="start">uses</text>
   <text class="kbd-lg" x="1190" y="681" text-anchor="end">Mandatory plugins: teams get 403 on change or delete</text>
   <rect class="kbd-pill" x="413.4" y="219" width="149.2" height="26" rx="13"/>
   <text class="kbd-l" x="488" y="237" text-anchor="middle">lints every team</text>
