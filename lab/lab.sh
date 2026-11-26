@@ -50,6 +50,7 @@ act_files() {
     echo "PROXY_URL_DEV=https://kong-dev:8443"; echo "PROXY_URL_PROD=https://kong-prod:8443"
     echo "PROXY_INSECURE=true"; } > .lab/vars
   { echo "PLATFORM_TOKEN_DEV=$PLATFORM_TOKEN"; echo "PLATFORM_TOKEN_PROD=$PLATFORM_TOKEN"
+    echo "SUPER_ADMIN_TOKEN_DEV=$KONG_ADMIN_TOKEN"; echo "SUPER_ADMIN_TOKEN_PROD=$KONG_ADMIN_TOKEN"
     echo "TF_STATE_PG_CONN=postgres://kong:$PG_PASSWORD@postgres:5432/tfstate?sslmode=disable"
     if [[ ${1:-} == teams ]]; then
       for t in $(yq '.teams[].name' teams.yaml); do
@@ -75,10 +76,8 @@ case "${1:-}" in
     if [[ ! -f .lab/bootstrapped ]]; then
       echo "=== one-time bootstrap (enforce_rbac = on)"
       KONG_ENFORCE_RBAC=on compose up -d --wait
-      for env in dev prod; do
-        KONG_ADDR=$(admin $env) SUPER_ADMIN_TOKEN=$KONG_ADMIN_TOKEN PLATFORM_TOKEN=$PLATFORM_TOKEN \
-          platform/bootstrap/bootstrap.sh
-      done
+      act_files
+      for env in dev prod; do run_act bootstrap.yaml --input environment=$env; done
       touch .lab/bootstrapped
     fi
     echo "=== Kong with enforce_rbac = both"

@@ -1,0 +1,51 @@
+# One-time, per environment, run by hand: the platform pipeline's own RBAC user.
+#
+# Entity-level RBAC needs its permissions in place before it is enforced, so run this while Kong
+# has enforce_rbac = on, then switch Kong to enforce_rbac = both. It creates:
+#   role platform-admin: every endpoint in every workspace, and every entity
+#   user ci-platform with that role (its token: secret PLATFORM_TOKEN_<ENV>)
+#   a wildcard entity permission on the built-in super-admin role
+# Not Terraform: kong-gateway provider 1.4.1 can't grant an endpoint permission in workspace "*".
+# Settings: variable KONG_ADDR_<ENV>; secrets SUPER_ADMIN_TOKEN_<ENV>, PLATFORM_TOKEN_<ENV>.
+name: bootstrap
+on:
+  workflow_dispatch:
+    inputs:
+      environment: {type: choice, options: [dev, prod], required: true}
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
+    environment: ${{ inputs.environment }}
+    env:
+      KONG_ADDR: ${{ inputs.environment == 'prod' && vars.KONG_ADDR_PROD || vars.KONG_ADDR_DEV }}
+      SUPER_ADMIN_TOKEN: ${{ inputs.environment == 'prod' && secrets.SUPER_ADMIN_TOKEN_PROD || secrets.SUPER_ADMIN_TOKEN_DEV }}
+      PLATFORM_TOKEN: ${{ inputs.environment == 'prod' && secrets.PLATFORM_TOKEN_PROD || secrets.PLATFORM_TOKEN_DEV }}
+    steps:
+      - name: Role platform-admin
+        run: >-
+          curl --fail-with-body -sS -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/roles"
+          --json '{"name":"platform-admin","comment":"The platform pipeline."}'
+      - name: "  every endpoint in every workspace"
+        run: >-
+          curl --fail-with-body -sS -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/roles/platform-admin/endpoints"
+          --json '{"endpoint":"*","workspace":"*","actions":"read,create,update,delete"}'
+      - name: "  every entity"
+        run: >-
+          curl --fail-with-body -sS -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/roles/platform-admin/entities"
+          --json '{"entity_id":"*","entity_type":"wildcard","actions":"read,create,update,delete"}'
+      - name: The super admin sees every entity too
+        run: >-
+          curl --fail-with-body -sS -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/roles/super-admin/entities"
+          --json '{"entity_id":"*","entity_type":"wildcard","actions":"read,create,update,delete"}'
+      - name: User ci-platform
+        run: >-
+          jq -n --arg t "$PLATFORM_TOKEN" '{name: "ci-platform", user_token: $t, comment: "The platform pipeline."}'
+          | curl --fail-with-body -sS -o /dev/null -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/users" --json @-
+      - name: "  has role platform-admin"
+        run: >-
+          curl --fail-with-body -sS -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/users/ci-platform/roles"
+          --json '{"roles":"platform-admin"}'

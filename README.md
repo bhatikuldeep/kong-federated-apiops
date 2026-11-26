@@ -42,11 +42,11 @@ To run one workflow again: `lab/lab.sh act <workflow>.yaml`; a team's token: `la
 
 ```text
 teams.yaml               the teams (platform-owned)
-platform/bootstrap/      one-time: the platform pipeline's RBAC user
+platform/bootstrap/      one-time setup (the bootstrap workflow): the platform pipeline's RBAC user
 platform/foundation/     Terraform: workspaces, RBAC, mandatory plugins
 platform/governance/     central rulesets
 teams/<team>/            openapi.yaml, plugins.yaml, consumers.yaml, rules/, environments/
-.github/workflows/       team-pipeline (reusable), teams, platform, drift, ci
+.github/workflows/       bootstrap (once), platform, team-pipeline (reusable), teams, drift, ci
 examples/team-repo/      a team with its own repository
 ```
 
