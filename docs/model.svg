@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 700" width="1220" height="700" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif">
+  <style>
+    .kbd-bg { fill: var(--entry, #ffffff); }
+    .kbd-box { fill: var(--entry, #ffffff); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.5; }
+    .kbd-dp { fill: var(--accent-soft, rgba(0, 245, 160, 0.14)); stroke: var(--accent, #007a52); stroke-width: 1.5; }
+    .kbd-plugin { fill: var(--entry, #ffffff); stroke: var(--accent, #007a52); stroke-width: 1.5; }
+    .kbd-pipe { fill: rgba(99, 102, 241, 0.10); stroke: #6366f1; stroke-width: 1.5; }
+    .kbd-cp { fill: var(--entry, #ffffff); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .kbd-t { fill: var(--primary, #111418); font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-s { fill: var(--secondary, #4a4f57); font-size: 17px; text-anchor: middle; }
+    .kbd-ta { fill: var(--accent, #007a52); font-size: 23px; font-weight: 600; text-anchor: middle; }
+    .kbd-tp { fill: #4f46e5; font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-l { fill: var(--secondary, #4a4f57); font-size: 16px; }
+    .kbd-line { fill: none; stroke: var(--muted, #5a5f68); stroke-width: 1.8; }
+    .kbd-req { fill: none; stroke: var(--primary, #111418); stroke-width: 2.6; }
+    .kbd-otlp { fill: none; stroke: #6366f1; stroke-width: 2; }
+    .kbd-dash { fill: none; stroke: var(--muted, #5a5f68); stroke-width: 1.8; stroke-dasharray: 6 5; }
+    .kbd-scrape { fill: none; stroke: var(--accent, #007a52); stroke-width: 2; stroke-dasharray: 6 5; }
+    .dark .kbd-pipe { fill: rgba(129, 140, 248, 0.14); stroke: #818cf8; }
+    .dark .kbd-tp { fill: #a5b4fc; }
+    .dark .kbd-otlp { stroke: #818cf8; }
+  
+    .kbd-grp { fill: rgba(17, 20, 24, 0.025); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.2; }
+    .kbd-ws { fill: var(--entry, #ffffff); stroke: var(--accent, #007a52); stroke-width: 1.2; stroke-dasharray: 5 4; }
+    .kbd-gl { fill: var(--secondary, #4a4f57); font-size: 14px; font-weight: 700; letter-spacing: 0.08em; }
+    .kbd-pill { fill: var(--entry, #ffffff); }
+    .kbd-badge { fill: var(--primary, #111418); }
+    .kbd-bt { fill: var(--entry, #ffffff); font-size: 15px; font-weight: 700; text-anchor: middle; }
+    .kbd-w { fill: none; stroke: var(--primary, #111418); stroke-width: 2.2; stroke-linejoin: round; }
+    .kbd-u { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 1.8; stroke-linejoin: round; }
+    .kbd-r { fill: none; stroke: var(--accent, #007a52); stroke-width: 2; stroke-dasharray: 7 5; stroke-linejoin: round; }
+    .kbd-o { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 1.8; stroke-dasharray: 7 5; stroke-linejoin: round; }
+    .kbd-warn { fill: var(--entry, #ffffff); stroke: #c2410c; stroke-width: 1.5; }
+    .kbd-tw { fill: #c2410c; font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-lg { fill: var(--secondary, #4a4f57); font-size: 15px; }
+    .dark .kbd-grp { fill: rgba(255, 255, 255, 0.035); }
+    .dark .kbd-warn { stroke: #fb923c; }
+    .dark .kbd-tw { fill: #fb923c; }
+  </style>
+  <defs>
+    <marker id="kbd-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #5a5f68)"/></marker>
+    <marker id="kbd-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
+    <marker id="kbd-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
+    <marker id="kbd-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
+    <marker id="kbd-mw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
+    <marker id="kbd-mu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #8a8f98)"/></marker>
+    <marker id="kbd-mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
+  </defs>
+  <rect class="kbd-bg" x="0" y="0" width="1220" height="700" rx="16"/>
+  <rect class="kbd-grp" x="30" y="24" width="560" height="168" rx="18"/>
+  <text class="kbd-gl" x="52" y="54">PLATFORM REPOSITORY</text>
+  <rect class="kbd-box" x="52" y="68" width="160" height="100" rx="14"/>
+  <text class="kbd-t" x="132" y="113" text-anchor="middle">teams.yaml</text>
+  <text class="kbd-s" x="132" y="139" text-anchor="middle">the team registry</text>
+  <rect class="kbd-box" x="230" y="68" width="160" height="100" rx="14"/>
+  <text class="kbd-t" x="310" y="113" text-anchor="middle">Terraform</text>
+  <text class="kbd-s" x="310" y="139" text-anchor="middle">foundation</text>
+  <rect class="kbd-box" x="408" y="68" width="160" height="100" rx="14"/>
+  <text class="kbd-t" x="488" y="113" text-anchor="middle">Rulesets</text>
+  <text class="kbd-s" x="488" y="139" text-anchor="middle">central</text>
+  <rect class="kbd-grp" x="630" y="24" width="560" height="168" rx="18"/>
+  <text class="kbd-gl" x="652" y="54">TEAM FOLDER OR REPOSITORY</text>
+  <rect class="kbd-box" x="652" y="68" width="160" height="100" rx="14"/>
+  <text class="kbd-t" x="732" y="113" text-anchor="middle">openapi.yaml</text>
+  <text class="kbd-s" x="732" y="139" text-anchor="middle">the API</text>
+  <rect class="kbd-box" x="830" y="68" width="160" height="100" rx="14"/>
+  <text class="kbd-t" x="910" y="113" text-anchor="middle">plugins.yaml</text>
+  <text class="kbd-s" x="910" y="139" text-anchor="middle">its plugins</text>
+  <rect class="kbd-box" x="1008" y="68" width="160" height="100" rx="14"/>
+  <text class="kbd-t" x="1088" y="113" text-anchor="middle">rules/</text>
+  <text class="kbd-s" x="1088" y="139" text-anchor="middle">its own rulesets</text>
+  <rect class="kbd-pipe" x="30" y="260" width="380" height="92" rx="14"/>
+  <text class="kbd-tp" x="220" y="301" text-anchor="middle">Platform workflow</text>
+  <text class="kbd-s" x="220" y="327" text-anchor="middle">Terraform, as ci-platform</text>
+  <rect class="kbd-pipe" x="630" y="260" width="560" height="92" rx="14"/>
+  <text class="kbd-tp" x="910" y="301" text-anchor="middle">Team pipeline</text>
+  <text class="kbd-s" x="910" y="327" text-anchor="middle">decK, with the team&#x27;s own token</text>
+  <path class="kbd-u" d="M220,194 L220,256" marker-end="url(#kbd-mu)"/>
+  <path class="kbd-u" d="M910,194 L910,256" marker-end="url(#kbd-mu)"/>
+  <path class="kbd-u" d="M488,170 L488,294 Q488,306 500,306 L626,306" marker-end="url(#kbd-mu)"/>
+  <rect class="kbd-dp" x="30" y="430" width="1160" height="210" rx="22"/>
+  <text class="kbd-ta" x="610" y="468" text-anchor="middle">Kong Gateway Enterprise</text>
+  <text class="kbd-s" x="610" y="494" text-anchor="middle">dev and prod · enforce_rbac = both</text>
+  <rect class="kbd-ws" x="54" y="514" width="536" height="108" rx="18"/>
+  <text class="kbd-gl" x="76" y="544">WORKSPACE ORDERS</text>
+  <rect class="kbd-plugin" x="72" y="552" width="242" height="58" rx="14"/>
+  <text class="kbd-t" x="193" y="589" text-anchor="middle">Mandatory plugins</text>
+  <rect class="kbd-plugin" x="330" y="552" width="242" height="58" rx="14"/>
+  <text class="kbd-t" x="451" y="589" text-anchor="middle">Team APIs</text>
+  <rect class="kbd-ws" x="630" y="514" width="536" height="108" rx="18"/>
+  <text class="kbd-gl" x="652" y="544">WORKSPACE PAYMENTS</text>
+  <rect class="kbd-plugin" x="648" y="552" width="242" height="58" rx="14"/>
+  <text class="kbd-t" x="769" y="589" text-anchor="middle">Mandatory plugins</text>
+  <rect class="kbd-plugin" x="906" y="552" width="242" height="58" rx="14"/>
+  <text class="kbd-t" x="1027" y="589" text-anchor="middle">Team APIs</text>
+  <text class="kbd-s" x="190" y="668" text-anchor="middle"></text>
+  <path class="kbd-w" d="M220,354 L220,426" marker-end="url(#kbd-mw)"/>
+  <path class="kbd-w" d="M1027,354 L1027,548" marker-end="url(#kbd-mw)"/>
+  <path class="kbd-w" d="M30,676 L70,676" marker-end="url(#kbd-mw)"/>
+  <text class="kbd-lg" x="82" y="681" text-anchor="start">writes / deploys</text>
+  <path class="kbd-u" d="M253.6,676 L293.6,676" marker-end="url(#kbd-mu)"/>
+  <text class="kbd-lg" x="305.6" y="681" text-anchor="start">uses</text>
+  <text class="kbd-lg" x="1190" y="681" text-anchor="end">Mandatory plugins: teams get 403 on change or delete</text>
+  <rect class="kbd-pill" x="413.4" y="219" width="149.2" height="26" rx="13"/>
+  <text class="kbd-l" x="488" y="237" text-anchor="middle">lints every team</text>
+  <rect class="kbd-pill" x="225" y="375" width="321.4" height="26" rx="13"/>
+  <text class="kbd-l" x="234" y="393" text-anchor="start">workspaces, access, mandatory plugins</text>
+  <rect class="kbd-pill" x="1003" y="375" width="198.4" height="26" rx="13"/>
+  <text class="kbd-l" x="1012" y="393" text-anchor="end">its own workspace only</text>
+</svg>
