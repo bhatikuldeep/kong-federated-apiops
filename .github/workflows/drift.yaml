@@ -1,0 +1,36 @@
+# Every morning: does each environment still match the repository? Fails (and notifies) on drift.
+name: drift
+on:
+  schedule: [{cron: "17 6 * * 1-5"}]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  platform:
+    strategy: {matrix: {environment: [dev, prod]}, fail-fast: false}
+    runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
+    environment: ${{ matrix.environment }}
+    env:
+      TF_VAR_admin_url: ${{ vars.KONG_ADDR }}
+      TF_VAR_admin_token: ${{ secrets.PLATFORM_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+      - run: pipelines/platform.sh "${{ matrix.environment }}" drift
+
+  teams:
+    strategy: {matrix: {environment: [dev, prod], team: [payments, orders]}, fail-fast: false}
+    runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+      - env:
+          KONG_ADDR: ${{ vars.KONG_ADDR }}
+          KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}', matrix.team)] }}
+          TEAM_ENV: ${{ secrets[format('TEAM_ENV_{0}', matrix.team)] }}
+        run: |
+          while IFS= read -r line; do [[ -n $line ]] && export "${line?}"; done <<<"$TEAM_ENV"
+          pipelines/drift.sh "${{ matrix.team }}"

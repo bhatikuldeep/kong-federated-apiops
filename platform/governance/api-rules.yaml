@@ -1,0 +1,41 @@
+# API design rules for every team's OpenAPI spec (deck file lint, Spectral-style rules).
+# error fails the pipeline; warn is reported only.
+rules:
+  info-contact:
+    description: The API names an owning team to contact.
+    given: $.info
+    severity: error
+    message: info.contact is required (who owns this API?)
+    then: {field: contact, function: defined}
+  servers-defined:
+    description: The spec says where the backend is.
+    given: $
+    severity: error
+    message: servers is required (it becomes the Kong service URL)
+    then: {field: servers, function: defined}
+  security-required:
+    description: OWASP API2 Broken Authentication. Every API declares how callers authenticate.
+    given: $
+    severity: error
+    message: a top-level security requirement is required
+    then: {field: security, function: defined}
+  operation-id:
+    description: Every operation has an operationId (Kong route names come from it).
+    given: $.paths[*][get,put,post,patch,delete]
+    severity: error
+    message: operationId is required
+    then: {field: operationId, function: defined}
+  operation-401:
+    description: OWASP API2. Operations document the unauthenticated response.
+    given: $.paths[*][get,put,post,patch,delete].responses
+    severity: warn
+    message: document the 401 response
+    then: {field: "401", function: defined}
+  https-servers:
+    description: Backends are called over TLS.
+    given: $.servers[*].url
+    severity: warn
+    message: the backend URL should use https
+    then:
+      function: pattern
+      functionOptions: {match: "^https://"}

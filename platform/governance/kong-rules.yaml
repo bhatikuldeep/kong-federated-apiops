@@ -1,0 +1,33 @@
+# Platform rules for the decK file a team's pipeline builds. They close the gaps RBAC can't:
+# Kong's RBAC sees every plugin write as /plugins, so these rules decide which plugins a team
+# may add and where.
+rules:
+  allowed-plugins:
+    description: Teams may only use plugins from the platform's list. The mandatory plugins
+      (correlation-id, request-size-limiting, rate-limiting) are not on it, so a team can't
+      replace them on its own services or routes.
+    given: $..plugins[*].name
+    severity: error
+    message: "plugin is not on the platform's allowed list"
+    then:
+      function: enumeration
+      functionOptions:
+        values: [key-auth, acl, cors, request-transformer, response-transformer, rate-limiting-advanced, request-validator]
+  no-global-plugins:
+    description: Global plugins belong to the platform.
+    given: $
+    severity: error
+    message: top-level (global) plugins are reserved for the platform team
+    then: {field: plugins, function: undefined}
+  no-plugin-ordering:
+    description: Dynamic ordering could run a team plugin ahead of the platform's.
+    given: $..plugins[*]
+    severity: error
+    message: the ordering field is reserved for the platform team
+    then: {field: ordering, function: undefined}
+  no-plugin-condition:
+    description: A condition expression could switch a plugin off for some requests.
+    given: $..plugins[*]
+    severity: warn
+    message: plugin conditions need a platform review
+    then: {field: condition, function: undefined}

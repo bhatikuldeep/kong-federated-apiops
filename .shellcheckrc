@@ -1,0 +1,2 @@
+# ok() || bad() reporting and sourcing the generated .env are deliberate
+disable=SC2015,SC1091,SC2001

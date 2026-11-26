@@ -1,0 +1,10 @@
+# The team registry: the one file the platform team edits to onboard a team.
+# Terraform reads it to create the team's workspace and access; the team pipeline reads it to
+# know the team's workspace and the path prefix its routes must start with.
+teams:
+  - name: payments
+    workspace: payments
+    path_prefix: /payments
+  - name: orders
+    workspace: orders
+    path_prefix: /orders

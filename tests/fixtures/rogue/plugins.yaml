@@ -1,0 +1,13 @@
+# Plugins a team must not be able to deploy, for make test.
+_format_version: "3.0"
+add-plugins:
+  - selectors: ["$..services[*]"]
+    plugins:
+      - name: rate-limiting                 # a mandatory plugin: would replace the platform's
+        config: {minute: 100000, policy: local}
+      - name: key-auth
+        ordering: {before: {access: [rate-limiting]}}   # reorders ahead of platform plugins
+  - selectors: []                            # no selector: a global plugin
+    plugins:
+      - name: request-termination
+        config: {status_code: 200}

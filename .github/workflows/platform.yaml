@@ -1,0 +1,29 @@
+# The platform pipeline: workspaces, access and mandatory plugins (Terraform), then the entity
+# rules (protect.sh). Pull request: plan. Merge to main: apply dev, then prod.
+# Each GitHub environment holds variable KONG_ADDR and secret PLATFORM_TOKEN; keep the Terraform
+# state in a remote backend in production (see docs).
+name: platform
+on:
+  pull_request: {paths: ["platform/**", "teams.yaml", "pipelines/platform.sh", "pipelines/protect.sh"]}
+  push: {branches: [main], paths: ["platform/**", "teams.yaml", "pipelines/platform.sh", "pipelines/protect.sh"]}
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    strategy: {matrix: {environment: [dev, prod]}, max-parallel: 1}
+    runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
+    environment: ${{ matrix.environment }}
+    concurrency: {group: "kong-platform-${{ matrix.environment }}", cancel-in-progress: false}
+    env:
+      TF_VAR_admin_url: ${{ vars.KONG_ADDR }}
+      TF_VAR_admin_token: ${{ secrets.PLATFORM_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+      - run: pipelines/platform.sh "${{ matrix.environment }}" plan
+      - if: github.event_name == 'push'
+        run: |
+          pipelines/platform.sh "${{ matrix.environment }}" apply
+          pipelines/protect.sh "${{ matrix.environment }}"

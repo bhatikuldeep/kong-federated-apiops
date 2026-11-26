@@ -1,0 +1,5 @@
+_format_version: "3.0"
+consumers:
+  - username: orders-web
+    keyauth_credentials:
+      - key: ${{ env "DECK_ORDERS_WEB_KEY" }}

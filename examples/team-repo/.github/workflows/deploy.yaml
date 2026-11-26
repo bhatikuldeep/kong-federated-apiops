@@ -1,0 +1,22 @@
+# In a team's own repository (one repository per team): openapi.yaml, plugins.yaml and
+# consumers.yaml at the root, and this workflow. The rules and scripts come from the platform
+# repository at a pinned version, so the team can't change them.
+name: deploy
+on:
+  pull_request: {}
+  push: {branches: [main]}
+
+permissions:
+  contents: read
+
+jobs:
+  dev:
+    uses: bhatikuldeep/kong-federated-apiops/.github/workflows/team-pipeline.yaml@v1.0.0
+    with: {team: payments, environment: dev, deploy: "${{ github.event_name == 'push' }}", team-repository: "${{ github.repository }}", platform-ref: v1.0.0}
+    secrets: {KONG_TOKEN: "${{ secrets.KONG_TOKEN }}", TEAM_ENV: "${{ secrets.TEAM_ENV }}"}
+  prod:
+    needs: dev
+    if: github.event_name == 'push'
+    uses: bhatikuldeep/kong-federated-apiops/.github/workflows/team-pipeline.yaml@v1.0.0
+    with: {team: payments, environment: prod, deploy: true, team-repository: "${{ github.repository }}", platform-ref: v1.0.0}
+    secrets: {KONG_TOKEN: "${{ secrets.KONG_TOKEN }}", TEAM_ENV: "${{ secrets.TEAM_ENV }}"}

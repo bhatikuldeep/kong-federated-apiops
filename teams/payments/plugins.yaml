@@ -1,0 +1,11 @@
+# The team's own plugins, added to its services by the pipeline (deck file add-plugins).
+# Only plugins on the platform's allowed list pass the pipeline's lint stage.
+_format_version: "3.0"
+add-plugins:
+  - selectors: ["$..services[*]"]
+    overwrite: false
+    plugins:
+      - name: key-auth
+        config: {key_names: [apikey], hide_credentials: true}
+      - name: rate-limiting-advanced
+        config: {namespace: payments, limit: [100], window_size: [60], window_type: sliding, strategy: local, sync_rate: -1}

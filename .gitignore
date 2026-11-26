@@ -1,0 +1,8 @@
+.env
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl.bak
+build/
+out/
+*.log

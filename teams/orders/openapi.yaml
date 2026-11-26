@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Orders API
+  version: 0.4.0
+  description: Place and track orders.
+  contact: {name: Orders team, email: orders-team@example.com}
+servers:
+  - url: http://upstream:8080/anything/orders
+security:
+  - apiKey: []
+tags:
+  - name: orders
+paths:
+  /orders:
+    get:
+      operationId: list-orders
+      summary: List orders
+      tags: [orders]
+      responses:
+        "200": {description: The orders.}
+        "401": {description: No or wrong API key.}
+components:
+  securitySchemes:
+    apiKey: {type: apiKey, in: header, name: apikey}

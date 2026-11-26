@@ -1,0 +1,6 @@
+# The team's API clients. The key is a reference to an environment variable, set as a CI secret.
+_format_version: "3.0"
+consumers:
+  - username: payments-web
+    keyauth_credentials:
+      - key: ${{ env "DECK_PAYMENTS_WEB_KEY" }}

@@ -1,0 +1,43 @@
+# One repository for all teams: run the team pipeline for every team folder a change touches.
+# Pull request: plan against dev. Merge to main: deploy to dev, then prod (prod waits for the
+# environment's reviewers).
+name: teams
+on:
+  pull_request: {paths: ["teams/**"]}
+  push: {branches: [main], paths: ["teams/**"]}
+
+permissions:
+  contents: read
+
+jobs:
+  changed:
+    runs-on: ubuntu-latest
+    outputs: {teams: "${{ steps.find.outputs.teams }}"}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {fetch-depth: 0}
+      - id: find
+        run: |
+          base=${{ github.event.pull_request.base.sha || github.event.before }}
+          teams=$(git diff --name-only "$base" HEAD -- teams | cut -d/ -f2 | sort -u | jq -R . | jq -sc .)
+          echo "teams=$teams" >> "$GITHUB_OUTPUT"
+
+  dev:
+    needs: changed
+    if: needs.changed.outputs.teams != '[]'
+    strategy: {matrix: {team: "${{ fromJSON(needs.changed.outputs.teams) }}"}, fail-fast: false}
+    uses: ./.github/workflows/team-pipeline.yaml
+    with: {team: "${{ matrix.team }}", environment: dev, deploy: "${{ github.event_name == 'push' }}", platform-ref: "${{ github.sha }}"}
+    secrets:
+      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}', matrix.team)] }}
+      TEAM_ENV: ${{ secrets[format('TEAM_ENV_{0}', matrix.team)] }}
+
+  prod:
+    needs: [changed, dev]
+    if: github.event_name == 'push' && needs.changed.outputs.teams != '[]'
+    strategy: {matrix: {team: "${{ fromJSON(needs.changed.outputs.teams) }}"}, fail-fast: false}
+    uses: ./.github/workflows/team-pipeline.yaml
+    with: {team: "${{ matrix.team }}", environment: prod, deploy: true, platform-ref: "${{ github.sha }}"}
+    secrets:
+      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}', matrix.team)] }}
+      TEAM_ENV: ${{ secrets[format('TEAM_ENV_{0}', matrix.team)] }}

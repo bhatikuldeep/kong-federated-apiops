@@ -1,0 +1,30 @@
+# This repository's own checks. They need no Kong: everything that does is proven by make test.
+name: ci
+on: {pull_request: {}, push: {branches: [main]}}
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {fetch-depth: 0}
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+      - name: secrets scan
+        run: gitleaks git --no-banner --redact .
+      - name: shell scripts and workflows
+        run: shellcheck pipelines/*.sh lab/lab.sh tests/e2e.sh && actionlint
+      - name: terraform
+        working-directory: platform/foundation
+        run: terraform fmt -check -recursive && terraform init -backend=false -input=false && terraform validate
+      - name: every team passes the offline stages
+        run: for t in $(yq '.teams[].name' teams.yaml); do for s in lint-api build lint-kong; do pipelines/team.sh "$t" "$s"; done; done
+      - name: the rules reject a rogue team
+        run: |
+          if TEAM_DIR=tests/fixtures/rogue pipelines/team.sh payments lint-api; then exit 1; fi
+          TEAM_DIR=tests/fixtures/rogue pipelines/team.sh payments build
+          if TEAM_DIR=tests/fixtures/rogue pipelines/team.sh payments lint-kong; then exit 1; fi
+      - name: compose file
+        run: PG_PASSWORD=x KONG_ADMIN_TOKEN=x KONG_LICENSE_DATA=x docker compose -f lab/compose.yaml config -q

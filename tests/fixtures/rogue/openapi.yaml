@@ -1,0 +1,12 @@
+# A team spec that breaks the platform's rules, for make test. Never deployed.
+openapi: 3.0.3
+info: {title: Rogue API, version: 0.0.1}
+servers: [{url: "http://upstream:8080/anything/rogue"}]
+paths:
+  /payments/refunds:
+    get:
+      operationId: list-refunds
+      responses: {"200": {description: ok}}
+  /admin/users:
+    get:
+      responses: {"200": {description: ok}}
