@@ -1,4 +1,4 @@
-# Every morning: does each environment still match the repository? Fails (and notifies) on drift.
+# Every weekday morning: does each environment still match the repository? A failed job is drift.
 name: drift
 on:
   schedule: [{cron: "17 6 * * 1-5"}]
@@ -9,28 +9,51 @@ permissions:
 
 jobs:
   platform:
-    strategy: {matrix: {environment: [dev, prod]}, fail-fast: false}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: [{environment: dev, env: DEV}, {environment: prod, env: PROD}]
     runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
     environment: ${{ matrix.environment }}
+    defaults:
+      run: {working-directory: platform/foundation}
     env:
-      TF_VAR_admin_url: ${{ vars.KONG_ADDR }}
-      TF_VAR_admin_token: ${{ secrets.PLATFORM_TOKEN }}
+      TF_VAR_admin_url: ${{ vars[format('KONG_ADDR_{0}', matrix.env)] }}
+      TF_VAR_admin_token: ${{ secrets[format('PLATFORM_TOKEN_{0}', matrix.env)] }}
+      PG_CONN_STR: ${{ secrets.TF_STATE_PG_CONN }}   # the Terraform state backend
+      TF_IN_AUTOMATION: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
-      - run: pipelines/platform.sh "${{ matrix.environment }}" drift
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with: {terraform_version: "1.17.2", terraform_wrapper: false}
+      - run: terraform init -input=false
+      - run: terraform workspace select -or-create ${{ matrix.environment }}
+      - name: "Drift: Kong differs from platform/foundation (exit code 2)"
+        run: terraform plan -input=false -detailed-exitcode
 
   teams:
-    strategy: {matrix: {environment: [dev, prod], team: [payments, orders]}, fail-fast: false}
-    runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
-    environment: ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    outputs: {teams: "${{ steps.list.outputs.result }}"}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
-      - env:
-          KONG_ADDR: ${{ vars.KONG_ADDR }}
-          KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}', matrix.team)] }}
-          TEAM_ENV: ${{ secrets[format('TEAM_ENV_{0}', matrix.team)] }}
-        run: |
-          while IFS= read -r line; do [[ -n $line ]] && export "${line?}"; done <<<"$TEAM_ENV"
-          pipelines/drift.sh "${{ matrix.team }}"
+      - id: list
+        uses: mikefarah/yq@f2944b823f84906a127dbd29e4c2a3e60c4e550e # v4.54.3
+        with: {cmd: "yq -o=json -I=0 '[.teams[].name]' teams.yaml"}
+
+  dev:
+    needs: teams
+    strategy: {matrix: {team: "${{ fromJSON(needs.teams.outputs.teams) }}"}, fail-fast: false}
+    uses: ./.github/workflows/team-pipeline.yaml
+    with: {team: "${{ matrix.team }}", mode: drift, environment: dev, kong-addr: "${{ vars.KONG_ADDR_DEV }}"}
+    secrets:
+      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_DEV', matrix.team)] }}
+      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
+
+  prod:
+    needs: teams
+    strategy: {matrix: {team: "${{ fromJSON(needs.teams.outputs.teams) }}"}, fail-fast: false}
+    uses: ./.github/workflows/team-pipeline.yaml
+    with: {team: "${{ matrix.team }}", mode: drift, environment: prod, kong-addr: "${{ vars.KONG_ADDR_PROD }}"}
+    secrets:
+      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_PROD', matrix.team)] }}
+      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}

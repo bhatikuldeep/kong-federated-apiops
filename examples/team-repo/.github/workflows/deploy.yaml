@@ -1,6 +1,7 @@
 # In a team's own repository (one repository per team): openapi.yaml, plugins.yaml and
-# consumers.yaml at the root, and this workflow. The rules and scripts come from the platform
-# repository at a pinned version, so the team can't change them.
+# consumers.yaml at the root, optionally rules/ with the team's own rulesets, and this workflow.
+# The pipeline and the central rulesets come from the platform repository at a pinned version, so
+# the team can't change them.
 name: deploy
 on:
   pull_request: {}
@@ -11,12 +12,35 @@ permissions:
 
 jobs:
   dev:
-    uses: bhatikuldeep/kong-federated-apiops/.github/workflows/team-pipeline.yaml@v1.0.0
-    with: {team: payments, environment: dev, deploy: "${{ github.event_name == 'push' }}", team-repository: "${{ github.repository }}", platform-ref: v1.0.0}
-    secrets: {KONG_TOKEN: "${{ secrets.KONG_TOKEN }}", TEAM_ENV: "${{ secrets.TEAM_ENV }}"}
+    uses: example-org/kong-platform/.github/workflows/team-pipeline.yaml@v1.0.0
+    with:
+      team: payments
+      mode: ${{ github.event_name == 'pull_request' && 'plan' || 'deploy' }}
+      environment: dev
+      kong-addr: ${{ vars.KONG_ADDR_DEV }}
+      proxy-url: ${{ vars.PROXY_URL_DEV }}
+      team-repository: ${{ github.repository }}
+      platform-repository: example-org/kong-platform
+      platform-ref: v1.0.0
+    secrets:
+      KONG_TOKEN: ${{ secrets.KONG_TOKEN_DEV }}
+      TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
+      SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
+
   prod:
     needs: dev
     if: github.event_name == 'push'
-    uses: bhatikuldeep/kong-federated-apiops/.github/workflows/team-pipeline.yaml@v1.0.0
-    with: {team: payments, environment: prod, deploy: true, team-repository: "${{ github.repository }}", platform-ref: v1.0.0}
-    secrets: {KONG_TOKEN: "${{ secrets.KONG_TOKEN }}", TEAM_ENV: "${{ secrets.TEAM_ENV }}"}
+    uses: example-org/kong-platform/.github/workflows/team-pipeline.yaml@v1.0.0
+    with:
+      team: payments
+      mode: deploy
+      environment: prod
+      kong-addr: ${{ vars.KONG_ADDR_PROD }}
+      proxy-url: ${{ vars.PROXY_URL_PROD }}
+      team-repository: ${{ github.repository }}
+      platform-repository: example-org/kong-platform
+      platform-ref: v1.0.0
+    secrets:
+      KONG_TOKEN: ${{ secrets.KONG_TOKEN_PROD }}
+      TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
+      SMOKE_KEY: ${{ secrets.SMOKE_KEY }}

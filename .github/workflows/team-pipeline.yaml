@@ -1,75 +1,101 @@
-# The team pipeline, reusable. Called by teams.yaml in this repository (one repository for all
-# teams) or by a team's own repository (see examples/team-repo).
+# The team pipeline. One reusable workflow for every team, called by teams.yaml (all teams in this
+# repository) or by a team's own repository (examples/team-repo). Plain decK commands, no scripts.
 #
-# Each environment is a GitHub environment named after it (dev, prod) holding:
-#   variable KONG_ADDR                 the environment's Admin API
-#   secret   KONG_TOKEN_<TEAM>         that team's pipeline token (terraform output ci_tokens)
-#   secret   DECK_<TEAM>_*             values the team's decK files reference
-# Protect prod with required reviewers in the environment settings.
+#   mode lint    lint the spec, build the decK file, lint it against the central and team rulesets
+#   mode plan    + validate and diff against the environment (pull requests)
+#   mode deploy  + sync and a smoke test (merge to main)
+#   mode drift   compare the environment with the repository (scheduled)
 name: team-pipeline
 on:
   workflow_call:
     inputs:
       team: {type: string, required: true}
-      environment: {type: string, required: true}
-      deploy: {type: boolean, default: false, description: "false: plan only (pull requests)"}
-      team-repository: {type: string, default: "", description: "a team's own repository; empty = teams/<team> here"}
-      platform-ref: {type: string, default: "main", description: "version of the platform rules and scripts"}
+      mode: {type: string, required: true, description: "lint, plan, deploy or drift"}
+      environment: {type: string, default: ""}
+      kong-addr: {type: string, default: "", description: "the environment's Admin API"}
+      proxy-url: {type: string, default: "", description: "the environment's proxy, for the smoke test"}
+      proxy-insecure: {type: boolean, default: false, description: "only for a self-signed lab proxy"}
+      team-repository: {type: string, default: "", description: "a team's own repository; empty: teams/<team> here"}
+      platform-repository: {type: string, default: "", description: "empty: this repository"}
+      platform-ref: {type: string, default: ""}
     secrets:
-      KONG_TOKEN: {required: true}
-      TEAM_ENV: {required: false, description: "extra DECK_ variables, one NAME=value per line"}
+      KONG_TOKEN: {required: false, description: "the team pipeline's RBAC token for this environment"}
+      TEAM_SECRETS: {required: false, description: 'JSON of DECK_ variables the team files use, e.g. {"DECK_WEB_KEY":"..."}'}
+      SMOKE_KEY: {required: false, description: "a consumer key for the smoke test"}
 
 permissions:
   contents: read
 
 jobs:
-  validate:
+  lint:
     name: lint and build (${{ inputs.team }})
     runs-on: ubuntu-latest
     steps:
+      # The platform repository at the root (rules and the build action); a team's own repository under team/.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {repository: bhatikuldeep/kong-federated-apiops, ref: "${{ inputs.platform-ref }}", path: platform}
+        if: inputs.platform-repository == ''
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.platform-repository != ''
+        with: {repository: "${{ inputs.platform-repository }}", ref: "${{ inputs.platform-ref }}"}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.team-repository != ''
         with: {repository: "${{ inputs.team-repository }}", path: team}
-      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
-        with: {working_directory: platform}
-      - name: lint-api, build, lint-kong
-        working-directory: platform
-        env:
-          TEAM_DIR: ${{ inputs.team-repository != '' && format('{0}/team', github.workspace) || '' }}
-        run: |
-          for stage in lint-api build lint-kong; do pipelines/team.sh "${{ inputs.team }}" "$stage"; done
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with: {name: "kong-${{ inputs.team }}-${{ inputs.environment }}", path: "platform/build/${{ inputs.team }}/kong.yaml"}
+      - uses: ./.github/actions/build-team
+        with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}"}
 
-  plan-or-deploy:
-    name: ${{ inputs.deploy && 'deploy' || 'plan' }} ${{ inputs.team }} to ${{ inputs.environment }}
-    needs: validate
+  gateway:
+    name: ${{ inputs.mode }} ${{ inputs.team }} in ${{ inputs.environment }}
+    needs: lint
+    if: inputs.mode != 'lint'
     runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}   # a runner that can reach the Admin API
     environment: ${{ inputs.environment }}
     concurrency: {group: "kong-${{ inputs.environment }}-${{ inputs.team }}", cancel-in-progress: false}
+    env:
+      DECK_KONG_ADDR: ${{ inputs.kong-addr }}
+      DECK_HEADERS: "Kong-Admin-Token:${{ secrets.KONG_TOKEN }}"
+      DECK_WORKSPACE: ${{ inputs.team }}
+      DECK_SKIP_WORKSPACE_CRUD: "true"
+      TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
     steps:
+      # The platform repository at the root (rules and the build action); a team's own repository under team/.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {repository: bhatikuldeep/kong-federated-apiops, ref: "${{ inputs.platform-ref }}"}
-      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with: {name: "kong-${{ inputs.team }}-${{ inputs.environment }}", path: "build/${{ inputs.team }}"}
-      - name: validate and diff
-        env:
-          KONG_ADDR: ${{ vars.KONG_ADDR }}
-          KONG_TOKEN: ${{ secrets.KONG_TOKEN }}
-          TEAM_ENV: ${{ secrets.TEAM_ENV }}
+        if: inputs.platform-repository == ''
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.platform-repository != ''
+        with: {repository: "${{ inputs.platform-repository }}", ref: "${{ inputs.platform-ref }}"}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.team-repository != ''
+        with: {repository: "${{ inputs.team-repository }}", path: team}
+      - id: build
+        uses: ./.github/actions/build-team
+        with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}"}
+      - name: Load the team's secrets
+        if: env.TEAM_SECRETS != ''
         run: |
-          while IFS= read -r line; do [[ -n $line ]] && export "${line?}"; done <<<"$TEAM_ENV"
-          pipelines/team.sh "${{ inputs.team }}" validate
-          pipelines/team.sh "${{ inputs.team }}" diff | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: sync
-        if: inputs.deploy
+          jq -r '.[] | "::add-mask::" + .' <<<"$TEAM_SECRETS"
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' <<<"$TEAM_SECRETS" >> "$GITHUB_ENV"
+      - name: Validate against the environment
+        if: inputs.mode != 'drift'
+        run: deck gateway validate "${{ steps.build.outputs.file }}"
+      - name: Diff
+        if: inputs.mode != 'drift'
+        run: deck gateway diff "${{ steps.build.outputs.file }}" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Sync
+        if: inputs.mode == 'deploy'
+        run: deck gateway sync "${{ steps.build.outputs.file }}"
+      - name: Smoke test
+        if: inputs.mode == 'deploy' && inputs.proxy-url != ''
         env:
-          KONG_ADDR: ${{ vars.KONG_ADDR }}
-          KONG_TOKEN: ${{ secrets.KONG_TOKEN }}
-          TEAM_ENV: ${{ secrets.TEAM_ENV }}
+          SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
+        run: >-
+          curl --fail --silent --show-error --output /dev/null
+          --retry 10 --retry-delay 1 --retry-all-errors ${{ inputs.proxy-insecure && '--insecure' || '' }}
+          --header "apikey: $SMOKE_KEY" "${{ inputs.proxy-url }}/${{ inputs.team }}"
+      - name: "Drift: managed config differs from the repository"
+        if: inputs.mode == 'drift'
+        run: deck gateway diff "${{ steps.build.outputs.file }}" --non-zero-exit-code
+      - name: "Drift: entities created outside the pipelines"
+        if: inputs.mode == 'drift' && !cancelled()
         run: |
-          while IFS= read -r line; do [[ -n $line ]] && export "${line?}"; done <<<"$TEAM_ENV"
-          pipelines/team.sh "${{ inputs.team }}" sync
+          deck gateway dump -o "build/${{ inputs.team }}/live.yaml" --yes
+          deck file lint -s "build/${{ inputs.team }}/live.yaml" --display-only-failures "platform/governance/teams/${{ inputs.team }}.yaml"

@@ -1,0 +1,46 @@
+# Lint a team's OpenAPI spec, build its decK file and lint that against the central and the
+# team's own rulesets. Used by both jobs of the team pipeline. Expects the platform repository at
+# the workspace root.
+name: build-team
+description: Lint and build one team's decK file
+inputs:
+  team: {required: true, description: "team name, as in teams.yaml"}
+  team-dir: {required: true, description: "folder with openapi.yaml, plugins.yaml, consumers.yaml"}
+outputs:
+  file: {description: "the built decK file", value: "${{ steps.build.outputs.file }}"}
+runs:
+  using: composite
+  steps:
+    - uses: Kong/setup-deck@6ea0a466ee5826ddb531cbe851ba8e5a77a0e041 # v1.7.1
+      with: {deck-version: "1.70.1"}
+    # Central rulesets (platform repository) always run as they are; a team's own rulesets
+    # (rules/ in its folder or repository) run as extra steps. Teams can add rules, never relax them.
+    - name: Lint the API spec (central API rules)
+      shell: bash
+      run: deck file lint -s "${{ inputs.team-dir }}/openapi.yaml" platform/governance/api-rules.yaml
+    - name: Lint the API spec (the team's own API rules)
+      if: hashFiles(format('{0}/rules/api-rules.yaml', inputs.team-dir)) != ''
+      shell: bash
+      run: deck file lint -s "${{ inputs.team-dir }}/openapi.yaml" "${{ inputs.team-dir }}/rules/api-rules.yaml"
+    - name: Build the decK file from the spec
+      id: build
+      shell: bash
+      env: {TAG: "team-${{ inputs.team }}", SRC: "${{ inputs.team-dir }}", OUT: "build/${{ inputs.team }}"}
+      run: |
+        mkdir -p "$OUT"
+        deck file openapi2kong -s "$SRC/openapi.yaml" --select-tag "$TAG" --uuid-base "$TAG" -o "$OUT/1-oas.yaml"
+        deck file add-plugins -s "$OUT/1-oas.yaml" -o "$OUT/2-plugins.yaml" "$SRC/plugins.yaml"
+        deck file merge -o "$OUT/3-merged.yaml" "$OUT/2-plugins.yaml" "$SRC/consumers.yaml"
+        deck file add-tags -s "$OUT/3-merged.yaml" -o "$OUT/4-tagged.yaml" "$TAG"
+        deck file patch -s "$OUT/4-tagged.yaml" -o "$OUT/kong.yaml" --selector '$' --value "_info:{\"select_tags\":[\"$TAG\"]}"
+        echo "file=$OUT/kong.yaml" >> "$GITHUB_OUTPUT"
+    - name: Lint the decK file (central platform rules)
+      shell: bash
+      run: deck file lint -s "${{ steps.build.outputs.file }}" platform/governance/kong-rules.yaml
+    - name: Lint the decK file (central rules for this team)
+      shell: bash
+      run: deck file lint -s "${{ steps.build.outputs.file }}" "platform/governance/teams/${{ inputs.team }}.yaml"
+    - name: Lint the decK file (the team's own rules)
+      if: hashFiles(format('{0}/rules/kong-rules.yaml', inputs.team-dir)) != ''
+      shell: bash
+      run: deck file lint -s "${{ steps.build.outputs.file }}" "${{ inputs.team-dir }}/rules/kong-rules.yaml"

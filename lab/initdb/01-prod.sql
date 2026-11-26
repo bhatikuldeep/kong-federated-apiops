@@ -1,1 +1,2 @@
 CREATE DATABASE kong_prod OWNER kong;
+CREATE DATABASE tfstate OWNER kong;

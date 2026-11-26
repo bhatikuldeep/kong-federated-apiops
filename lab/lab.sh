@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
-# Runs the whole model on 127.0.0.1: two environments (dev, prod) of Kong Gateway Enterprise
-# in Docker, the platform pipeline, then every team pipeline. Called by make.
+# Runs the whole model on 127.0.0.1 with the repository's own GitHub workflows, executed by act:
+# two environments (dev, prod) of Kong Gateway Enterprise in Docker, the one-time bootstrap, the
+# platform workflow, then the teams workflow for every team. Called by make.
 #
-#   lab/lab.sh up | down | clean | env <dev|prod> <team|platform>
+#   lab/lab.sh up | down | clean | act <workflow> [act args] | token <env> <team|platform>
+#
+# act copies the repository into each job container (never --bind): a job can't change the
+# files here. Terraform state lives in the lab's Postgres (pg backend), not in the repository.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 lic=${KONG_LICENSE_FILE:-$HOME/.kong-license-data/license.json}
+runner=catthehacker/ubuntu@sha256:ebfc2752875ebb29fbfa360db9dcd2f76bc160147ec6bd1b035bba0ef8b38fbe
+mkdir -p .lab
 
 secrets() {
   if [[ ! -f .env ]]; then
     umask 077
     { echo "PG_PASSWORD=$(openssl rand -hex 16)"
       echo "KONG_ADMIN_TOKEN=$(openssl rand -hex 24)"
-      echo "DECK_PAYMENTS_WEB_KEY=$(openssl rand -hex 16)"
-      echo "DECK_ORDERS_WEB_KEY=$(openssl rand -hex 16)"; } > .env
+      echo "PLATFORM_TOKEN=$(openssl rand -hex 24)"
+      echo "PAYMENTS_WEB_KEY=$(openssl rand -hex 16)"
+      echo "ORDERS_WEB_KEY=$(openssl rand -hex 16)"; } > .env
   fi
   set -a; . ./.env; set +a
 }
@@ -25,38 +32,60 @@ compose() {
 }
 
 admin() { [[ $1 == dev ]] && echo http://127.0.0.1:18001 || echo http://127.0.0.1:19001; }
-proxy() { [[ $1 == dev ]] && echo https://127.0.0.1:18443 || echo https://127.0.0.1:19443; }
+upper() { tr '[:lower:]' '[:upper:]' <<<"$1"; }
 
-# Print the environment a pipeline needs, for: eval "$(lab/lab.sh env dev payments)"
-envfor() {
-  local env=$1 who=$2
-  if [[ $who == platform ]]; then
-    printf 'export TF_VAR_admin_url=%q TF_VAR_admin_token=%q\n' "$(admin "$env")" "$KONG_ADMIN_TOKEN"
-  else
-    local tok
-    tok=$(cd platform/foundation && terraform workspace select "$env" >/dev/null && terraform output -json ci_tokens | yq -p json ".$who")
-    local key; key=$(eval echo "\$DECK_$(tr '[:lower:]' '[:upper:]' <<<"$who")_WEB_KEY")
-    printf 'export KONG_ADDR=%q KONG_TOKEN=%q PROXY_URL=%q SMOKE_KEY=%q SMOKE_INSECURE=1\n' "$(admin "$env")" "$tok" "$(proxy "$env")" "$key"
-    printf 'export DECK_%s_WEB_KEY=%q\n' "$(tr '[:lower:]' '[:upper:]' <<<"$who")" "$key"
-  fi
+# A team pipeline's token, as Terraform created it (what you'd store as a CI secret).
+token() { # env team|platform
+  if [[ $2 == platform ]]; then echo "$PLATFORM_TOKEN"; return; fi
+  ( cd platform/foundation
+    export PG_CONN_STR="postgres://kong:$PG_PASSWORD@127.0.0.1:15432/tfstate?sslmode=disable"
+    terraform init -input=false >/dev/null
+    terraform workspace select "$1" >/dev/null
+    terraform output -json ci_tokens ) | yq -p json ".$2"
 }
 
-deploy_team() {
-  local env=$1 team=$2
-  ( eval "$(envfor "$env" "$team")"
-    for s in lint-api build lint-kong validate diff sync smoke; do
-      echo "--- $team $env: $s"; pipelines/team.sh "$team" "$s"
-    done )
+# What a GitHub repository would hold as variables and secrets, for act.
+act_files() {
+  { echo "KONG_ADDR_DEV=http://kong-dev:8001"; echo "KONG_ADDR_PROD=http://kong-prod:8001"
+    echo "PROXY_URL_DEV=https://kong-dev:8443"; echo "PROXY_URL_PROD=https://kong-prod:8443"
+    echo "PROXY_INSECURE=true"; } > .lab/vars
+  { echo "PLATFORM_TOKEN_DEV=$PLATFORM_TOKEN"; echo "PLATFORM_TOKEN_PROD=$PLATFORM_TOKEN"
+    echo "TF_STATE_PG_CONN=postgres://kong:$PG_PASSWORD@postgres:5432/tfstate?sslmode=disable"
+    if [[ ${1:-} == teams ]]; then
+      for t in $(yq '.teams[].name' teams.yaml); do
+        local T key; T=$(upper "$t"); key=$(eval echo "\$${T}_WEB_KEY")
+        echo "KONG_TOKEN_${T}_DEV=$(token dev "$t")"; echo "KONG_TOKEN_${T}_PROD=$(token prod "$t")"
+        echo "TEAM_SECRETS_${T}={\"DECK_${T}_WEB_KEY\":\"$key\"}"; echo "SMOKE_KEY_${T}=$key"
+      done
+    fi; } > .lab/secrets
+  chmod 600 .lab/secrets
+}
+
+run_act() { # workflow file, then act args
+  local wf=$1; shift
+  act workflow_dispatch -W ".github/workflows/$wf" --network fapi_default --pull=false \
+    -P "ubuntu-latest=$runner" --var-file .lab/vars --secret-file .lab/secrets "$@"
 }
 
 case "${1:-}" in
   up)
     secrets
+    if [[ ! -f .lab/bootstrapped ]]; then
+      echo "=== one-time bootstrap (enforce_rbac = on)"
+      KONG_ENFORCE_RBAC=on compose up -d --wait
+      for env in dev prod; do
+        KONG_ADDR=$(admin $env) SUPER_ADMIN_TOKEN=$KONG_ADMIN_TOKEN PLATFORM_TOKEN=$PLATFORM_TOKEN \
+          platform/bootstrap/bootstrap.sh
+      done
+      touch .lab/bootstrapped
+    fi
+    echo "=== Kong with enforce_rbac = both"
     compose up -d --wait
-    for env in dev prod; do
-      echo "=== platform $env"
-      ( eval "$(envfor "$env" platform)"; pipelines/platform.sh "$env" apply | grep -E 'Apply complete|No changes'; pipelines/protect.sh "$env" )
-      for team in $(yq '.teams[].name' teams.yaml); do deploy_team "$env" "$team"; done
+    act_files
+    echo "=== platform workflow"; run_act platform.yaml
+    act_files teams
+    for t in $(yq '.teams[].name' teams.yaml); do
+      echo "=== teams workflow: $t"; run_act teams.yaml --input team="$t"
     done
     echo; echo "Kong dev:  proxy https://127.0.0.1:18443  admin http://127.0.0.1:18001"
     echo "Kong prod: proxy https://127.0.0.1:19443  admin http://127.0.0.1:19001"
@@ -64,8 +93,10 @@ case "${1:-}" in
   down) secrets; compose down ;;
   clean)
     secrets; compose down -v --remove-orphans
-    rm -rf build platform/foundation/terraform.tfstate.d platform/foundation/.terraform/environment .env
+    for d in build .lab; do [[ -e $d ]] && rm -r "$d"; done
+    rm -f .env platform/foundation/.terraform/environment platform/foundation/.terraform/terraform.tfstate
     ;;
-  env) secrets; envfor "${2:?env}" "${3:?team or platform}" ;;
-  *) echo "usage: lab/lab.sh up|down|clean|env <env> <team|platform>" >&2; exit 2 ;;
+  act) secrets; act_files teams; shift; run_act "$@" ;;
+  token) secrets; token "${2:?env}" "${3:?team or platform}" ;;
+  *) echo "usage: lab/lab.sh up|down|clean|act <workflow> [args]|token <env> <team>" >&2; exit 2 ;;
 esac

@@ -1,10 +1,17 @@
-# One repository for all teams: run the team pipeline for every team folder a change touches.
-# Pull request: plan against dev. Merge to main: deploy to dev, then prod (prod waits for the
-# environment's reviewers).
+# One repository for all teams: run the team pipeline for each team folder a change touches.
+# Pull request: plan against dev. Merge to main: deploy dev, then prod (prod waits for the
+# reviewers of the prod environment). workflow_dispatch: run one team by hand.
+#
+# Settings, per environment (DEV, PROD):
+#   variables KONG_ADDR_<ENV>, PROXY_URL_<ENV>
+#   secrets   KONG_TOKEN_<TEAM>_<ENV>, and per team TEAM_SECRETS_<TEAM>, SMOKE_KEY_<TEAM>
 name: teams
 on:
-  pull_request: {paths: ["teams/**"]}
-  push: {branches: [main], paths: ["teams/**"]}
+  pull_request: {paths: ["teams/**", "platform/governance/**"]}
+  push: {branches: [main], paths: ["teams/**", "platform/governance/**"]}
+  workflow_dispatch:
+    inputs:
+      team: {type: string, required: true}
 
 permissions:
   contents: read
@@ -17,27 +24,43 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {fetch-depth: 0}
       - id: find
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          TEAM: ${{ inputs.team }}
         run: |
-          base=${{ github.event.pull_request.base.sha || github.event.before }}
-          teams=$(git diff --name-only "$base" HEAD -- teams | cut -d/ -f2 | sort -u | jq -R . | jq -sc .)
-          echo "teams=$teams" >> "$GITHUB_OUTPUT"
+          if [ -n "$TEAM" ]; then echo "teams=[\"$TEAM\"]" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "teams=$(git diff --name-only "$BASE" HEAD -- teams | cut -d/ -f2 | sort -u | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   dev:
-    needs: changed
+    needs: [changed]
     if: needs.changed.outputs.teams != '[]'
     strategy: {matrix: {team: "${{ fromJSON(needs.changed.outputs.teams) }}"}, fail-fast: false}
     uses: ./.github/workflows/team-pipeline.yaml
-    with: {team: "${{ matrix.team }}", environment: dev, deploy: "${{ github.event_name == 'push' }}", platform-ref: "${{ github.sha }}"}
+    with:
+      team: ${{ matrix.team }}
+      mode: ${{ github.event_name == 'pull_request' && 'plan' || 'deploy' }}
+      environment: dev
+      kong-addr: ${{ vars.KONG_ADDR_DEV }}
+      proxy-url: ${{ vars.PROXY_URL_DEV }}
+      proxy-insecure: ${{ vars.PROXY_INSECURE == 'true' }}
     secrets:
-      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}', matrix.team)] }}
-      TEAM_ENV: ${{ secrets[format('TEAM_ENV_{0}', matrix.team)] }}
+      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_DEV', matrix.team)] }}
+      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
+      SMOKE_KEY: ${{ secrets[format('SMOKE_KEY_{0}', matrix.team)] }}
 
   prod:
     needs: [changed, dev]
-    if: github.event_name == 'push' && needs.changed.outputs.teams != '[]'
+    if: github.event_name != 'pull_request' && needs.changed.outputs.teams != '[]'
     strategy: {matrix: {team: "${{ fromJSON(needs.changed.outputs.teams) }}"}, fail-fast: false}
     uses: ./.github/workflows/team-pipeline.yaml
-    with: {team: "${{ matrix.team }}", environment: prod, deploy: true, platform-ref: "${{ github.sha }}"}
+    with:
+      team: ${{ matrix.team }}
+      mode: deploy
+      environment: prod
+      kong-addr: ${{ vars.KONG_ADDR_PROD }}
+      proxy-url: ${{ vars.PROXY_URL_PROD }}
+      proxy-insecure: ${{ vars.PROXY_INSECURE == 'true' }}
     secrets:
-      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}', matrix.team)] }}
-      TEAM_ENV: ${{ secrets[format('TEAM_ENV_{0}', matrix.team)] }}
+      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_PROD', matrix.team)] }}
+      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
+      SMOKE_KEY: ${{ secrets[format('SMOKE_KEY_{0}', matrix.team)] }}

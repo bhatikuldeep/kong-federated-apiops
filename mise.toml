@@ -5,6 +5,7 @@ yq = "4.54.3"
 gitleaks = "8.30.1"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
+act = "0.2.98"
 
 [env]
 DECK_ANALYTICS = "off"

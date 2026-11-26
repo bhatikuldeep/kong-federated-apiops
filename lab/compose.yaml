@@ -19,7 +19,7 @@ x-kong-env: &kong-env
   KONG_PG_PASSWORD: ${PG_PASSWORD:?run make up}
   KONG_LICENSE_DATA: ${KONG_LICENSE_DATA:?set KONG_LICENSE_FILE}
   KONG_PASSWORD: ${KONG_ADMIN_TOKEN:?run make up}
-  KONG_ENFORCE_RBAC: both            # endpoint and entity-level RBAC: protects platform plugins
+  KONG_ENFORCE_RBAC: ${KONG_ENFORCE_RBAC:-both}   # "on" only for the one-time bootstrap
   KONG_ADMIN_LISTEN: 0.0.0.0:8001
   KONG_NGINX_WORKER_PROCESSES: "2"   # two environments share one Postgres in this lab
   KONG_PROXY_LISTEN: 0.0.0.0:8443 ssl    # routes default to https only on 3.16
@@ -40,6 +40,7 @@ services:
       POSTGRES_PASSWORD: ${PG_PASSWORD:?run make up}
       POSTGRES_DB: kong_dev
     command: ["postgres", "-c", "max_connections=300"]
+    ports: ["127.0.0.1:15432:5432"]   # the Terraform state database, for terraform output on the host
     volumes:
       - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
