@@ -42,6 +42,13 @@ jobs:
         with: {repository: "${{ inputs.team-repository }}", path: team}
       - uses: ./.github/actions/build-team
         with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}"}
+      # Pull requests: a change that breaks existing clients needs a new major version.
+      - uses: ./.github/actions/breaking-change
+        if: github.event_name == 'pull_request'
+        with:
+          repo-dir: ${{ inputs.team-repository != '' && 'team' || '.' }}
+          spec: ${{ inputs.team-repository != '' && 'openapi.yaml' || format('teams/{0}/openapi.yaml', inputs.team) }}
+          base-ref: ${{ github.base_ref }}
 
   gateway:
     name: ${{ inputs.mode }} ${{ inputs.team }} in ${{ inputs.environment }}

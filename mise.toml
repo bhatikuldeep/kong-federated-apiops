@@ -6,6 +6,7 @@ gitleaks = "8.30.1"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
 act = "0.2.98"
+"github:oasdiff/oasdiff" = "1.38.0"
 
 [env]
 DECK_ANALYTICS = "off"

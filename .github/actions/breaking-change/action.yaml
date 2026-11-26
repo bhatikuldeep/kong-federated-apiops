@@ -1,0 +1,46 @@
+# Fail when an API spec breaks existing clients without a new major version (oasdiff,
+# --fail-on MISSING-VERSION-BUMP). The base is the spec on the pull request's base branch, or a
+# file. The binary is downloaded from the oasdiff release and checked against its published
+# SHA-256; no spec leaves the runner.
+name: breaking-change
+description: Breaking changes need a major version bump
+inputs:
+  spec: {required: true, description: "the changed OpenAPI spec, relative to repo-dir"}
+  repo-dir: {required: false, default: ".", description: "the git repository that holds the spec"}
+  base-ref: {required: false, default: "", description: "git ref of the base branch, e.g. main"}
+  base-spec: {required: false, default: "", description: "or: a file with the base spec"}
+runs:
+  using: composite
+  steps:
+    - name: Install oasdiff 1.38.0
+      shell: bash
+      env:
+        ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'amd64' }}
+        SHA_AMD64: 613037fd6a1d3362a1b742d6d86c338c0eb5ab3511f4942ce3948e78720ea2da
+        SHA_ARM64: a5ebb16d90f729f6b436a92d3054c11ba5633ddfb639dfdfb64b0023cd03680c
+      run: |
+        f="oasdiff_1.38.0_linux_${ARCH}.tar.gz"
+        curl -fsSLo "$RUNNER_TEMP/$f" "https://github.com/oasdiff/oasdiff/releases/download/v1.38.0/$f"
+        sha=$([ "$ARCH" = arm64 ] && echo "$SHA_ARM64" || echo "$SHA_AMD64")
+        echo "$sha  $RUNNER_TEMP/$f" | sha256sum -c -
+        tar -xzf "$RUNNER_TEMP/$f" -C "$RUNNER_TEMP" oasdiff
+        echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+    - name: Find the base spec
+      id: base
+      shell: bash
+      env: {SPEC: "${{ inputs.spec }}", REPO: "${{ inputs.repo-dir }}", BASE_REF: "${{ inputs.base-ref }}", BASE_SPEC: "${{ inputs.base-spec }}"}
+      run: |
+        if [ -n "$BASE_SPEC" ]; then echo "file=$BASE_SPEC" >> "$GITHUB_OUTPUT"; exit 0; fi
+        git -C "$REPO" fetch --quiet --depth=1 origin "$BASE_REF"
+        if git -C "$REPO" cat-file -e "FETCH_HEAD:$SPEC" 2>/dev/null; then
+          git -C "$REPO" show "FETCH_HEAD:$SPEC" > "$RUNNER_TEMP/base-openapi.yaml"
+          echo "file=$RUNNER_TEMP/base-openapi.yaml" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::$SPEC is new on this branch; nothing to compare"
+        fi
+    - name: Breaking changes need a major version bump
+      if: steps.base.outputs.file != ''
+      shell: bash
+      run: |
+        oasdiff breaking "${{ steps.base.outputs.file }}" "${{ inputs.repo-dir }}/${{ inputs.spec }}" --format markdown >> "$GITHUB_STEP_SUMMARY"
+        oasdiff breaking "${{ steps.base.outputs.file }}" "${{ inputs.repo-dir }}/${{ inputs.spec }}" --fail-on MISSING-VERSION-BUMP --format githubactions

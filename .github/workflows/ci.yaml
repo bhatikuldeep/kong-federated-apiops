@@ -26,6 +26,21 @@ jobs:
           if deck file lint -s /tmp/rogue.yaml platform/governance/kong-rules.yaml; then exit 1; fi
           if deck file lint -s /tmp/rogue.yaml platform/governance/teams/payments.yaml; then exit 1; fi
 
+  breaking-change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: minor
+        uses: ./.github/actions/breaking-change
+        continue-on-error: true
+        with: {spec: tests/fixtures/breaking/openapi.yaml, base-spec: teams/payments/openapi.yaml}
+      - id: major
+        uses: ./.github/actions/breaking-change
+        with: {spec: tests/fixtures/breaking-major/openapi.yaml, base-spec: teams/payments/openapi.yaml}
+      - name: A breaking change without a major version is rejected
+        if: steps.minor.outcome != 'failure'
+        run: exit 1
+
   teams:
     strategy: {matrix: {team: [payments, orders]}}
     uses: ./.github/workflows/team-pipeline.yaml
