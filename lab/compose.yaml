@@ -21,6 +21,10 @@ x-kong-env: &kong-env
   KONG_PASSWORD: ${KONG_ADMIN_TOKEN:?run make up}
   KONG_ENFORCE_RBAC: ${KONG_ENFORCE_RBAC:-both}   # "on" only for the one-time bootstrap
   KONG_ADMIN_LISTEN: 0.0.0.0:8001
+  # Kong Manager: log in as kong_admin with the KONG_ADMIN_TOKEN from .env
+  KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+  KONG_ADMIN_GUI_AUTH: basic-auth
+  KONG_ADMIN_GUI_SESSION_CONF: '{"secret":"${PG_PASSWORD}","storage":"kong","cookie_secure":false}'
   KONG_NGINX_WORKER_PROCESSES: "2"   # two environments share one Postgres in this lab
   KONG_PROXY_LISTEN: 0.0.0.0:8443 ssl    # routes default to https only on 3.16
   KONG_PROXY_ACCESS_LOG: /dev/stdout
@@ -66,12 +70,20 @@ services:
     <<: *kong
     depends_on:
       migrations-dev: {condition: service_completed_successfully}
-    environment: {<<: *kong-env, KONG_PG_DATABASE: kong_dev}
-    ports: ["127.0.0.1:18443:8443", "127.0.0.1:18001:8001"]
+    environment:
+      <<: *kong-env
+      KONG_PG_DATABASE: kong_dev
+      KONG_ADMIN_GUI_URL: http://127.0.0.1:18002
+      KONG_ADMIN_GUI_API_URL: http://127.0.0.1:18001
+    ports: ["127.0.0.1:18443:8443", "127.0.0.1:18001:8001", "127.0.0.1:18002:8002"]
 
   kong-prod:
     <<: *kong
     depends_on:
       migrations-prod: {condition: service_completed_successfully}
-    environment: {<<: *kong-env, KONG_PG_DATABASE: kong_prod}
-    ports: ["127.0.0.1:19443:8443", "127.0.0.1:19001:8001"]
+    environment:
+      <<: *kong-env
+      KONG_PG_DATABASE: kong_prod
+      KONG_ADMIN_GUI_URL: http://127.0.0.1:19002
+      KONG_ADMIN_GUI_API_URL: http://127.0.0.1:19001
+    ports: ["127.0.0.1:19443:8443", "127.0.0.1:19001:8001", "127.0.0.1:19002:8002"]

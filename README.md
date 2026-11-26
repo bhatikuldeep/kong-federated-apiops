@@ -53,9 +53,18 @@ make down         # stop the containers, keep the data
 make clean        # remove everything this repository created
 ```
 
-`make up` runs Kong in Docker on 127.0.0.1 (dev: proxy 18443, Admin API 18001; prod: 19443, 19001)
-and runs this repository's GitHub workflows locally with [act](https://github.com/nektos/act),
-against those two environments. The lab proxy uses Kong's default self-signed certificate.
+`make up` runs Kong in Docker on 127.0.0.1 and runs this repository's GitHub workflows locally with
+[act](https://github.com/nektos/act) against both environments. The lab proxy uses Kong's default
+self-signed certificate.
+
+| | Proxy | Admin API | Kong Manager |
+|---|---|---|---|
+| dev | https://127.0.0.1:18443 | http://127.0.0.1:18001 | http://127.0.0.1:18002 |
+| prod | https://127.0.0.1:19443 | http://127.0.0.1:19001 | http://127.0.0.1:19002 |
+
+Log in to Kong Manager as `kong_admin` with the `KONG_ADMIN_TOKEN` value from `.env` (created by
+`make up`, never committed). In production, map Kong Manager to your identity provider and give
+each team's people the read-only `apiops-viewer` role.
 
 ## Repository layout
 

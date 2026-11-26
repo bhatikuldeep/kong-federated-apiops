@@ -89,8 +89,9 @@ case "${1:-}" in
     for t in $(yq '.teams[].name' teams.yaml); do
       echo "=== teams workflow: $t"; run_act teams.yaml --input team="$t"
     done
-    echo; echo "Kong dev:  proxy https://127.0.0.1:18443  admin http://127.0.0.1:18001"
-    echo "Kong prod: proxy https://127.0.0.1:19443  admin http://127.0.0.1:19001"
+    echo; echo "Kong dev:  proxy https://127.0.0.1:18443  Admin API http://127.0.0.1:18001  Kong Manager http://127.0.0.1:18002"
+    echo "Kong prod: proxy https://127.0.0.1:19443  Admin API http://127.0.0.1:19001  Kong Manager http://127.0.0.1:19002"
+    echo "Kong Manager login: kong_admin, password = KONG_ADMIN_TOKEN in .env"
     ;;
   down) secrets; compose down ;;
   clean)
