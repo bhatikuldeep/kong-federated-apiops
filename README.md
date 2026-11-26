@@ -35,6 +35,7 @@ flowchart LR
 |---|---|---|
 | The platform owns mandatory plugins and teams can't modify them | Terraform creates them as global plugins in every team workspace, tagged `platform`. With `enforce_rbac = both`, the team role is denied update and delete on each one. The central platform ruleset blocks a team from reusing a mandatory plugin's name on its services or routes (which would replace it), from global plugins and from `ordering`. | team PUT and DELETE on each mandatory plugin → 403, the platform's PUT on the same plugin → 200, the rogue team's plugins rejected by the ci workflow |
 | Teams can only deploy their OAS with their allowed plugins | The team pipeline builds the decK file from the spec and `plugins.yaml` and lints it with the central rulesets, the platform's rules for that team (path prefix) and the team's own rules | the ci workflow: both teams pass, the rogue spec and plugins fail |
+| Existing clients don't break by surprise | On pull requests, [oasdiff](https://github.com/oasdiff/oasdiff) compares the spec with the base branch: a breaking change without a new major `info.version` fails (`--fail-on MISSING-VERSION-BUMP`) | the ci workflow: a removed operation with a minor bump fails, with a major bump passes |
 | Teams can't do anything in workspaces that aren't theirs | Each team pipeline's RBAC user has a role only in the team's workspace, denied `/rbac`, `/workspaces` and `/vaults` | reads and writes in the other workspace → 403, creating users, roles or workspaces → 403 |
 | One repository or many | One reusable team pipeline: `teams.yaml` calls it for each team folder here, a team's own repository calls it at a pinned version (`examples/team-repo`) | the monorepo path end to end; the team-repository path is not run end to end (it needs two GitHub repositories) |
 | Nothing changes outside the pipelines | The drift workflow: `terraform plan -detailed-exitcode` for the platform; per team `deck gateway diff --non-zero-exit-code` and a lint of a workspace dump with the team's ownership rule | a hand edit, a plugin added by hand, a switched-off and a deleted mandatory plugin each fail the drift workflow, and the platform or teams workflow repairs them |
@@ -76,6 +77,7 @@ platform/governance/               central rulesets: api-rules, kong-rules, team
 teams/<team>/                      openapi.yaml, plugins.yaml, consumers.yaml, rules/ (team-owned)
 .github/workflows/team-pipeline.yaml   the reusable team pipeline (lint, plan, deploy, drift)
 .github/actions/build-team/        lint the spec, build the decK file, lint it (both jobs use it)
+.github/actions/breaking-change/   oasdiff: breaking changes need a new major version (pull requests)
 .github/workflows/teams.yaml       one repository for all teams: runs the pipeline per team
 .github/workflows/platform.yaml    Terraform plan and apply, dev then prod
 .github/workflows/drift.yaml       scheduled drift check for the platform and every team
@@ -110,7 +112,7 @@ everything that needs Kong is proven by `make test`.
 ## Versions
 
 Kong Gateway Enterprise 3.16.0.3, decK 1.70.1, Terraform 1.17.2 with kong/kong-gateway provider
-1.4.1, Postgres 18.1, act 0.2.98. Images and actions are pinned by digest or commit.
+1.4.1, Postgres 18.1, act 0.2.98, oasdiff 1.38.0. Images and actions are pinned by digest or commit.
 
 ## License
 
