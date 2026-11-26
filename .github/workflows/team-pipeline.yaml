@@ -53,8 +53,8 @@ jobs:
     env:
       DECK_KONG_ADDR: ${{ inputs.kong-addr }}
       DECK_HEADERS: "Kong-Admin-Token:${{ secrets.KONG_TOKEN }}"
-      DECK_WORKSPACE: ${{ inputs.team }}
       DECK_SKIP_WORKSPACE_CRUD: "true"
+      WORKSPACE: ${{ inputs.team }}   # one workspace per team; passed as --workspace on every call
       TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
     steps:
       # The platform repository at the root (rules and the build action); a team's own repository under team/.
@@ -76,13 +76,13 @@ jobs:
           jq -r 'to_entries[] | "\(.key)=\(.value)"' <<<"$TEAM_SECRETS" >> "$GITHUB_ENV"
       - name: Validate against the environment
         if: inputs.mode != 'drift'
-        run: deck gateway validate "${{ steps.build.outputs.file }}"
+        run: deck gateway validate --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}"
       - name: Diff
         if: inputs.mode != 'drift'
-        run: deck gateway diff "${{ steps.build.outputs.file }}" | tee -a "$GITHUB_STEP_SUMMARY"
+        run: deck gateway diff --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Sync
         if: inputs.mode == 'deploy'
-        run: deck gateway sync "${{ steps.build.outputs.file }}"
+        run: deck gateway sync --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}"
       - name: Smoke test
         if: inputs.mode == 'deploy' && inputs.proxy-url != ''
         env:
@@ -93,9 +93,9 @@ jobs:
           --header "apikey: $SMOKE_KEY" "${{ inputs.proxy-url }}/${{ inputs.team }}"
       - name: "Drift: managed config differs from the repository"
         if: inputs.mode == 'drift'
-        run: deck gateway diff "${{ steps.build.outputs.file }}" --non-zero-exit-code
+        run: deck gateway diff --workspace "$WORKSPACE" --non-zero-exit-code "${{ steps.build.outputs.file }}"
       - name: "Drift: entities created outside the pipelines"
         if: inputs.mode == 'drift' && !cancelled()
         run: |
-          deck gateway dump -o "build/${{ inputs.team }}/live.yaml" --yes
+          deck gateway dump --workspace "$WORKSPACE" -o "build/${{ inputs.team }}/live.yaml" --yes
           deck file lint -s "build/${{ inputs.team }}/live.yaml" --display-only-failures "platform/governance/teams/${{ inputs.team }}.yaml"
