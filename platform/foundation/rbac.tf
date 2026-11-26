@@ -2,7 +2,8 @@
 # endpoint rules and the entity rules.
 locals {
   # The deployer may do anything in its workspace, except access control and the workspace itself.
-  deployer_deny = ["/rbac", "/rbac/*", "/rbac/*/*", "/rbac/*/*/*", "/rbac/*/*/*/*", "/workspaces", "/workspaces/*", "/vaults", "/vaults/*"]
+  # Kong's RBAC docs: covering all of the RBAC API takes /rbac/* down to five segments.
+  deployer_deny = ["/rbac", "/rbac/*", "/rbac/*/*", "/rbac/*/*/*", "/rbac/*/*/*/*", "/rbac/*/*/*/*/*", "/workspaces", "/workspaces/*", "/vaults", "/vaults/*"]
 }
 
 resource "kong-gateway_rbac_role" "deployer" {
