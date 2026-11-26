@@ -46,6 +46,7 @@ services:
     command: ["postgres", "-c", "max_connections=300"]
     ports: ["127.0.0.1:15432:5432"]   # the Terraform state database, for terraform output on the host
     volumes:
+      - pgdata:/var/lib/postgresql          # named, so make down keeps the data
       - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "kong"]
@@ -87,3 +88,6 @@ services:
       KONG_ADMIN_GUI_URL: http://127.0.0.1:19002
       KONG_ADMIN_GUI_API_URL: http://127.0.0.1:19001
     ports: ["127.0.0.1:19443:8443", "127.0.0.1:19001:8001", "127.0.0.1:19002:8002"]
+
+volumes:
+  pgdata:
