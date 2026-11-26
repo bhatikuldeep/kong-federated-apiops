@@ -30,10 +30,27 @@ resource "kong-gateway_rbac_role_endpoint" "deployer_deny" {
   negative  = true
 }
 
-# Entity rules (Kong runs with enforce_rbac = both) are added by pipelines/protect.sh, not here:
-# on Kong Gateway Enterprise 3.16 a role's entity permissions can be created through the Admin
-# API but not read back (the list is empty and a single read returns 403), so Terraform could
-# create them once and then fail on every later plan. The script needs the IDs below.
+# Entity rules. Allow every entity, so the team's access never depends on which RBAC user created
+# an entity (a rotated pipeline token keeps everything), then deny update and delete on each
+# mandatory plugin: Kong checks the explicit deny first.
+resource "kong-gateway_rbac_role_entity" "deployer_all" {
+  for_each    = local.teams
+  role_id     = kong-gateway_rbac_role.deployer[each.key].id
+  workspace   = kong-gateway_workspace.team[each.key].name
+  entity_id   = "*"
+  entity_type = "wildcard"
+  actions     = ["read", "create", "update", "delete"]
+}
+
+resource "kong-gateway_rbac_role_entity" "deployer_protect" {
+  for_each    = local.mandatory_plugin_ids
+  role_id     = kong-gateway_rbac_role.deployer[each.value.team].id
+  workspace   = kong-gateway_workspace.team[each.value.team].name
+  entity_id   = each.value.id
+  entity_type = "plugins"
+  actions     = ["update", "delete"]
+  negative    = true
+}
 
 # Read-only access for the team's people (Kong Manager), mapped to an identity provider group
 # in production.
@@ -51,6 +68,15 @@ resource "kong-gateway_rbac_role_endpoint" "viewer" {
   endpoint  = "*"
   actions   = ["read"]
   negative  = false
+}
+
+resource "kong-gateway_rbac_role_entity" "viewer" {
+  for_each    = local.teams
+  role_id     = kong-gateway_rbac_role.viewer[each.key].id
+  workspace   = kong-gateway_workspace.team[each.key].name
+  entity_id   = "*"
+  entity_type = "wildcard"
+  actions     = ["read"]
 }
 
 # The pipeline's own identity. No person uses this token.
@@ -80,17 +106,4 @@ output "ci_tokens" {
   description = "Each team pipeline's Admin API token. Store it as that team's CI secret."
   value       = { for k, v in random_password.ci_token : k => v.result }
   sensitive   = true
-}
-
-output "protect" {
-  description = "Input for pipelines/protect.sh: per team, the workspace, its roles and the mandatory plugin IDs."
-  value = {
-    for team, t in local.teams : team => {
-      workspace    = kong-gateway_workspace.team[team].name
-      workspace_id = kong-gateway_workspace.team[team].id
-      deployer_id  = kong-gateway_rbac_role.deployer[team].id
-      viewer_id    = kong-gateway_rbac_role.viewer[team].id
-      mandatory    = [for k, v in local.mandatory_plugin_ids : v.id if v.team == team]
-    }
-  }
 }

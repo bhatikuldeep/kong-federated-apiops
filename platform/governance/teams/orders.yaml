@@ -1,0 +1,23 @@
+# Rules for team orders (platform-owned). The team pipeline lints its built decK file with them, and
+# the drift job lints a dump of the team's workspace with them.
+rules:
+  route-prefix:
+    description: The team's routes stay under /orders.
+    given: $..routes[*].paths[*]
+    severity: error
+    message: "routes of team orders must start with /orders"
+    then:
+      function: pattern
+      functionOptions: {match: "^~?/orders([/$]|$)"}
+  owned:
+    description: Every entity carries the team's tag or the platform's. Anything else was created
+      outside the pipelines.
+    given: ["$.services[*]", "$..routes[*]", "$..plugins[*]", "$.consumers[*]", "$.upstreams[*]"]
+    severity: error
+    message: "created outside the pipelines (no team-orders or platform tag)"
+    then:
+      - {field: tags, function: defined}
+      - field: tags
+        function: schema
+        functionOptions:
+          schema: {type: array, contains: {enum: [team-orders, platform]}}

@@ -1,0 +1,12 @@
+# The payments team's own Kong rules (team-owned): every payments service has its own rate limit.
+rules:
+  service-rate-limit:
+    description: Each payments service limits its callers, on top of the platform's ceiling.
+    given: $.services[*]
+    severity: error
+    message: payments services need rate-limiting-advanced
+    then:
+      field: plugins
+      function: schema
+      functionOptions:
+        schema: {type: array, contains: {type: object, properties: {name: {const: rate-limiting-advanced}}, required: [name]}}

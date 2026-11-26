@@ -1,10 +1,6 @@
-# The team registry: the one file the platform team edits to onboard a team.
-# Terraform reads it to create the team's workspace and access; the team pipeline reads it to
-# know the team's workspace and the path prefix its routes must start with.
+# The team registry: the one file the platform team edits to onboard a team. Each team gets a
+# Kong workspace with the same name (Terraform, platform/foundation) and a rules file
+# (platform/governance/teams/<name>.yaml) that the team pipeline and the drift job lint against.
 teams:
   - name: payments
-    workspace: payments
-    path_prefix: /payments
   - name: orders
-    workspace: orders
-    path_prefix: /orders

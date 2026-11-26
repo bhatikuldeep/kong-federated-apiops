@@ -1,10 +1,10 @@
-# Platform rules for the decK file a team's pipeline builds. They close the gaps RBAC can't:
-# Kong's RBAC sees every plugin write as /plugins, so these rules decide which plugins a team
-# may add and where.
+# Central platform rules (platform team), for the decK file each team pipeline builds. They close
+# the gaps RBAC can't: Kong's RBAC sees every plugin write as /plugins, so these rules decide which
+# plugins a team may add and where. A team can add its own rules in rules/kong-rules.yaml.
 rules:
   allowed-plugins:
-    description: Teams may only use plugins from the platform's list. The mandatory plugins
-      (correlation-id, request-size-limiting, rate-limiting) are not on it, so a team can't
+    description: Teams use plugins from the platform's list only. The mandatory plugins
+      (correlation-id, request-size-limiting, rate-limiting) aren't on it, so a team can't
       replace them on its own services or routes.
     given: $..plugins[*].name
     severity: error
@@ -31,3 +31,21 @@ rules:
     severity: warn
     message: plugin conditions need a platform review
     then: {field: condition, function: undefined}
+  https-only-routes:
+    description: Routes accept TLS only (Kong's default since 3.14; don't turn plain HTTP back on).
+    given: $..routes[*].protocols[*]
+    severity: error
+    message: routes must not accept plain http
+    then: {function: enumeration, functionOptions: {values: [https, grpcs, tls]}}
+  key-auth-hides-credentials:
+    description: The API key isn't forwarded to the backend.
+    given: $..plugins[?(@.name == 'key-auth')].config
+    severity: error
+    message: "key-auth must set hide_credentials to true"
+    then: {field: hide_credentials, function: truthy}
+  upstream-tls:
+    description: Kong calls backends over TLS.
+    given: $.services[*]
+    severity: warn
+    message: the service should use https to its backend
+    then: {field: protocol, function: pattern, functionOptions: {match: '^https$'}}

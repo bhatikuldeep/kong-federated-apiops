@@ -1,0 +1,15 @@
+# The payments team's own API conventions (team-owned). They run after the platform's rules and
+# can only add checks.
+rules:
+  kebab-case-operation-ids:
+    description: operationIds are kebab-case, so route names read the same in every API.
+    given: $.paths[*][*].operationId
+    severity: error
+    message: operationId must be kebab-case
+    then: {function: pattern, functionOptions: {match: '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'}}
+  operation-summary:
+    description: Every operation has a summary, for the developer portal and reviews.
+    given: $.paths[*][get,put,post,patch,delete]
+    severity: error
+    message: add a summary
+    then: {field: summary, function: defined}

@@ -1,24 +1,37 @@
-# API design rules for every team's OpenAPI spec (deck file lint, Spectral-style rules).
-# error fails the pipeline; warn is reported only.
+# Central API design rules (platform team), for every team's OpenAPI spec. deck file lint runs
+# them (Spectral-style rules, vacuum engine). error fails the pipeline; warn is reported only.
+# A team can add its own rules in rules/api-rules.yaml; it can't change these.
 rules:
   info-contact:
-    description: The API names an owning team to contact.
+    description: The API names the team that owns it.
     given: $.info
     severity: error
     message: info.contact is required (who owns this API?)
     then: {field: contact, function: defined}
+  info-version:
+    description: Versions are semantic (major.minor.patch).
+    given: $.info.version
+    severity: error
+    message: info.version must look like 1.2.3
+    then: {function: pattern, functionOptions: {match: '^[0-9]+\.[0-9]+\.[0-9]+$'}}
   servers-defined:
-    description: The spec says where the backend is.
+    description: The spec says where the backend is; it becomes the Kong service.
     given: $
     severity: error
     message: servers is required (it becomes the Kong service URL)
     then: {field: servers, function: defined}
   security-required:
-    description: OWASP API2 Broken Authentication. Every API declares how callers authenticate.
+    description: OWASP API2 (broken authentication). Every API declares how callers authenticate.
     given: $
     severity: error
     message: a top-level security requirement is required
     then: {field: security, function: defined}
+  no-basic-auth:
+    description: OWASP API2. Prefer API keys or OAuth over HTTP basic authentication.
+    given: $.components.securitySchemes[*]
+    severity: warn
+    message: avoid HTTP basic authentication
+    then: {field: scheme, function: pattern, functionOptions: {notMatch: '^[Bb]asic$'}}
   operation-id:
     description: Every operation has an operationId (Kong route names come from it).
     given: $.paths[*][get,put,post,patch,delete]
@@ -26,16 +39,20 @@ rules:
     message: operationId is required
     then: {field: operationId, function: defined}
   operation-401:
-    description: OWASP API2. Operations document the unauthenticated response.
+    description: OWASP API2. Operations document the response for unauthenticated calls.
     given: $.paths[*][get,put,post,patch,delete].responses
     severity: warn
     message: document the 401 response
     then: {field: "401", function: defined}
+  bounded-integers:
+    description: OWASP API4 (unrestricted resource consumption). Integers have a maximum.
+    given: $..properties[?(@.type == 'integer')]
+    severity: warn
+    message: set a maximum on integer fields
+    then: {field: maximum, function: defined}
   https-servers:
     description: Backends are called over TLS.
     given: $.servers[*].url
     severity: warn
     message: the backend URL should use https
-    then:
-      function: pattern
-      functionOptions: {match: "^https://"}
+    then: {function: pattern, functionOptions: {match: '^https://'}}
