@@ -42,6 +42,10 @@ jobs:
         with: {repository: "${{ inputs.team-repository }}", path: team}
       - uses: ./.github/actions/build-team
         with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}"}
+      # Pull requests: the prod build (with its environment patch) passes the rulesets before merge.
+      - uses: ./.github/actions/build-team
+        if: inputs.mode == 'plan'
+        with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}", environment: prod}
       # Pull requests: a change that breaks existing clients needs a new major version.
       - uses: ./.github/actions/breaking-change
         if: github.event_name == 'pull_request'
@@ -108,7 +112,7 @@ jobs:
         env:
           SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
         run: >-
-          curl --fail --silent --show-error --output /dev/null
+          curl --fail --silent --output /dev/null
           --retry 10 --retry-delay 1 --retry-all-errors ${{ inputs.proxy-insecure && '--insecure' || '' }}
           --header "apikey: $SMOKE_KEY" "${{ inputs.proxy-url }}/${{ inputs.team }}"
       - name: "Drift: managed config differs from the repository"

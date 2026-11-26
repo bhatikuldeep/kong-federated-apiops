@@ -33,7 +33,8 @@ runs:
         deck file add-plugins -s "$OUT/1-oas.yaml" -o "$OUT/2-plugins.yaml" "$SRC/plugins.yaml"
         deck file merge -o "$OUT/3-merged.yaml" "$OUT/2-plugins.yaml" "$SRC/consumers.yaml"
         deck file add-tags -s "$OUT/3-merged.yaml" -o "$OUT/4-tagged.yaml" "$TAG"
-        deck file patch -s "$OUT/4-tagged.yaml" -o "$OUT/kong.yaml" --selector '$' --value "_info:{\"select_tags\":[\"$TAG\"]}"
+        deck file patch -s "$OUT/4-tagged.yaml" -o "$OUT/kong.yaml" --selector '$' \
+          --value "_info:{\"select_tags\":[\"$TAG\"]}" --value "_workspace:\"${{ inputs.team }}\""
         echo "file=$OUT/kong.yaml" >> "$GITHUB_OUTPUT"
     # Environment-specific values (an upstream per environment, say), before the decK file is
     # linted, so a patch can't bring in anything the rulesets reject.

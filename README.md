@@ -13,7 +13,7 @@ spec. Nobody can touch another team's workspace or the platform's mandatory plug
 | Teams deploy only their spec and allowed plugins | `deck file lint`: central rulesets plus each team's own |
 | A breaking API change needs a new major version | `oasdiff` on pull requests |
 | Teams stay in their own workspace | one workspace and one RBAC user per team |
-| Nothing changes outside Git | a daily drift workflow |
+| Nothing changes outside Git | a drift workflow every weekday morning |
 
 `make test` proves each rule, including the attempts that must fail.
 
@@ -36,6 +36,7 @@ make clean   # remove everything
 | prod | https://127.0.0.1:19443 | http://127.0.0.1:19001 | http://127.0.0.1:19002 |
 
 Kong Manager login: `kong_admin`, password `KONG_ADMIN_TOKEN` from `.env`.
+To run one workflow again: `lab/lab.sh act <workflow>.yaml`; a team's token: `lab/lab.sh token dev <team>`.
 
 ## What's where
 

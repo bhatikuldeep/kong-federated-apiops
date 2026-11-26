@@ -12,7 +12,7 @@ bad() { echo "FAIL  $1${2:+ ($2)}"; fail=$((fail+1)); }
 J='Content-Type: application/json'
 DEV=http://127.0.0.1:18001 PROD=http://127.0.0.1:19001
 code() { # token method url [body]
-  curl -s -o /tmp/e2e-body -w '%{http_code}' -X "$2" -H "Kong-Admin-Token: $1" -H "$J" ${4:+-d "$4"} "$3"
+  curl -s -o .lab/e2e-body -w '%{http_code}' -X "$2" -H "Kong-Admin-Token: $1" -H "$J" ${4:+-d "$4"} "$3"
 }
 expect_code() { # desc expected token method url [body]
   local c; c=$(code "$3" "$4" "$5" "${6:-}")
@@ -20,23 +20,24 @@ expect_code() { # desc expected token method url [body]
 }
 workflow() { # desc expected(pass|fail) workflow [act args]
   local d=$1 want=$2 wf=$3; shift 3
-  lab/lab.sh act "$wf" "$@" > /tmp/e2e-act.log 2>&1; local rc=$?
+  lab/lab.sh act "$wf" "$@" > .lab/e2e-act.log 2>&1; local rc=$?
   if [[ $want == pass && $rc == 0 ]] || [[ $want == fail && $rc != 0 ]]; then ok "$d (workflow $wf: ${want}ed)"
-  else bad "$d" "workflow $wf exit $rc, want $want"; grep -E "❌|Error:" /tmp/e2e-act.log | head -5 | sed 's/^/      /'; fi
+  else bad "$d" "workflow $wf exit $rc, want $want"; grep -E "❌|Error:" .lab/e2e-act.log | head -5 | sed 's/^/      /'; fi
 }
-failed_step() { grep -q -- "$2" /tmp/e2e-act.log && ok "  $1" || bad "  $1" "no '$2' in the run"; }
+failed_step() { grep -q -- "$2" .lab/e2e-act.log && ok "  $1" || bad "  $1" "no '$2' in the run"; }
 put_body() { yq -p json -o json -I0 '{"name": .name, "config": .config, "tags": .tags, "service": .service, "route": .route, "consumer": .consumer, "enabled": '"$1"'}'; }
 platform_plugin() { # url ws name -> json
   curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" "$1/$2/plugins?tags=platform" | yq -p json -o json -I0 ".data[] | select(.name == \"$3\")"
 }
+mkdir -p .lab
 PAY_DEV=$(lab/lab.sh token dev payments)
 
 echo "== 1. Rulesets (the ci workflow: central and team rulesets, a rogue team rejected)"
 # ci runs on push and pull_request; act runs it as a push:
 act push -W .github/workflows/ci.yaml --pull=false \
   -P "ubuntu-latest=catthehacker/ubuntu@sha256:ebfc2752875ebb29fbfa360db9dcd2f76bc160147ec6bd1b035bba0ef8b38fbe" \
-  > /tmp/e2e-act.log 2>&1 && ok "ci workflow: both teams pass, the rogue spec and plugins are rejected" \
-  || { bad "ci workflow"; grep -E "❌|Error:" /tmp/e2e-act.log | head -5; }
+  > .lab/e2e-act.log 2>&1 && ok "ci workflow: both teams pass, the rogue spec and plugins are rejected" \
+  || { bad "ci workflow"; grep -E "❌|Error:" .lab/e2e-act.log | head -5; }
 
 echo "== 2. Workspace isolation (dev, the payments pipeline token)"
 expect_code "payments reads its own workspace" 200 "$PAY_DEV" GET $DEV/payments/services
@@ -66,10 +67,20 @@ workflow "a hand edit is drift" fail drift.yaml
 failed_step "found by the managed-config diff" "Failure - Main Drift: managed config differs"
 workflow "the teams workflow repairs it" pass teams.yaml --input team=payments
 expect_code "someone adds a plugin outside the pipelines" 201 "$PAY_DEV" POST $DEV/payments/services/team-payments/plugins '{"name":"rate-limiting","config":{"minute":100000,"policy":"local"}}'
-rogue=$(yq -p json .id /tmp/e2e-body)
+rogue=$(yq -p json -o yaml .id .lab/e2e-body)
 workflow "a plugin added by hand is drift" fail drift.yaml
 failed_step "found by the ownership rule" "created outside the pipelines"
 expect_code "it is removed" 204 "$PAY_DEV" DELETE "$DEV/payments/plugins/$rogue"
+expect_code "a team creates its own rate-limiting tagged platform" 201 "$PAY_DEV" POST $DEV/payments/services/team-payments/plugins '{"name":"rate-limiting","config":{"minute":100000,"policy":"local"},"tags":["platform"]}'
+fake=$(yq -p json -o yaml .id .lab/e2e-body)
+lim=""; for _ in 1 2 3 4 5 6 7 8 9 10; do
+  lim=$(curl -sk -o /dev/null -D - -H "apikey: $PAYMENTS_WEB_KEY" https://127.0.0.1:18443/payments | tr -d '\r' | awk -F': ' 'tolower($1)=="ratelimit-limit"{print $2}')
+  [[ $lim == 100000 ]] && break; sleep 1; done
+[[ $lim == 100000 ]] && ok "it replaces the platform's limit on live traffic (RateLimit-Limit: $lim)" || bad "override on live traffic" "RateLimit-Limit: $lim"
+workflow "the override is drift" fail drift.yaml
+failed_step "found by the no-mandatory-override rule" "overrides a mandatory plugin"
+failed_step "and by the platform-tag rule" "only global plugins may carry the platform tag"
+expect_code "it is removed" 204 "$PAY_DEV" DELETE "$DEV/payments/plugins/$fake"
 rl=$(platform_plugin $DEV payments rate-limiting); rlid=$(yq -p json .id <<<"$rl")
 expect_code "the platform's mandatory rate limit is switched off by hand" 200 "$PLATFORM_TOKEN" PUT "$DEV/payments/plugins/$rlid" "$(put_body false <<<"$rl")"
 workflow "a switched-off mandatory plugin is drift" fail drift.yaml
@@ -83,7 +94,17 @@ new=$(yq -p json .id <<<"$(platform_plugin $DEV payments rate-limiting)")
 expect_code "payments deletes the recreated plugin" 403 "$PAY_DEV" DELETE "$DEV/payments/plugins/$new"
 workflow "no drift once repaired" pass drift.yaml
 
-echo "== 5. Token rotation keeps the team's access"
+echo "== 5. Rollback from the pre-sync backup"
+deck gateway dump --workspace payments --select-tag team-payments --skip-consumers -o .lab/backup.yaml --yes \
+  --kong-addr $DEV --headers "Kong-Admin-Token:$PAY_DEV" >/dev/null 2>&1
+expect_code "a bad change lands" 200 "$PAY_DEV" PATCH $DEV/payments/services/team-payments '{"retries":0}'
+deck gateway sync --workspace payments --select-tag team-payments --skip-consumers .lab/backup.yaml \
+  --kong-addr $DEV --headers "Kong-Admin-Token:$PAY_DEV" >/dev/null 2>&1 && ok "deck gateway sync of the backup (--skip-consumers)" || bad "rollback sync"
+r=$(curl -s -H "Kong-Admin-Token: $PAY_DEV" $DEV/payments/services/team-payments | yq -p json .retries)
+[[ $r == 5 ]] && ok "the service is back as it was (retries $r)" || bad "rollback restored the service" "retries $r"
+expect_code "the team's consumer is still there" 200 "$PAY_DEV" GET $DEV/payments/consumers/payments-web
+
+echo "== 6. Token rotation keeps the team's access"
 ( cd platform/foundation && export PG_CONN_STR="postgres://kong:$PG_PASSWORD@127.0.0.1:15432/tfstate?sslmode=disable" \
     TF_VAR_admin_url=$DEV TF_VAR_admin_token=$PLATFORM_TOKEN && terraform workspace select dev >/dev/null && \
   terraform apply -input=false -auto-approve -replace='random_password.ci_token["payments"]' >/dev/null ) \
@@ -93,9 +114,9 @@ NEW=$(lab/lab.sh token dev payments)
 expect_code "the old token is refused" 401 "$PAY_DEV" GET $DEV/payments/services
 expect_code "the new token reads the team's service" 200 "$NEW" GET $DEV/payments/services/team-payments
 workflow "the teams workflow deploys with the new token" pass teams.yaml --input team=payments
-grep -q "Updated: 0" /tmp/e2e-act.log && grep -q "Created: 0" /tmp/e2e-act.log && ok "  and has nothing to change" || bad "  and has nothing to change"
+grep -q "Updated: 0" .lab/e2e-act.log && grep -q "Created: 0" .lab/e2e-act.log && ok "  and has nothing to change" || bad "  and has nothing to change"
 
-echo "== 6. Promotion"
+echo "== 7. Promotion"
 d=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $DEV/payments/services/team-payments | yq -p json .id)
 p=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $PROD/payments/services/team-payments | yq -p json .id)
 [[ -n $d && $d == "$p" ]] && ok "same service ID in dev and prod (built from the same spec)" || bad "same service ID in dev and prod"

@@ -1,5 +1,5 @@
 # Rules for team orders (platform-owned). The team pipeline lints its built decK file with them, and
-# the drift job lints a dump of the team's workspace with them.
+# the drift workflow lints a dump of the team's workspace with them.
 rules:
   route-prefix:
     description: The team's routes stay under /orders.
@@ -12,7 +12,20 @@ rules:
   owned:
     description: Every entity carries the team's tag or the platform's. Anything else was created
       outside the pipelines.
-    given: ["$.services[*]", "$..routes[*]", "$..plugins[*]", "$.consumers[*]", "$.upstreams[*]"]
+    given:
+      - "$.services[*]"
+      - "$..routes[*]"
+      - "$..plugins[*]"
+      - "$.consumers[*]"
+      - "$.consumer_groups[*]"
+      - "$.upstreams[*]"
+      - "$.certificates[*]"
+      - "$.ca_certificates[*]"
+      - "$..snis[*]"
+      - "$.keys[*]"
+      - "$.key_sets[*]"
+      - "$.vaults[*]"
+      - "$.partials[*]"
     severity: error
     message: "created outside the pipelines (no team-orders or platform tag)"
     then:
@@ -21,3 +34,23 @@ rules:
         function: schema
         functionOptions:
           schema: {type: array, contains: {enum: [team-orders, platform]}}
+  platform-tag-only-on-global-plugins:
+    description: The platform's plugins are global. A plugin on a service, route or consumer that
+      carries the platform tag was created to look like one.
+    given: ["$.services[*].plugins[*]", "$..routes[*].plugins[*]", "$.consumers[*].plugins[*]", "$.consumer_groups[*].plugins[*]"]
+    severity: error
+    message: "only global plugins may carry the platform tag"
+    then:
+      field: tags
+      function: schema
+      functionOptions:
+        schema: {not: {contains: {const: platform}}}
+  no-mandatory-override:
+    description: A mandatory plugin's name on a service, route or consumer replaces the platform's
+      global one for that traffic, whatever it's tagged.
+    given: ["$.services[*].plugins[*].name", "$..routes[*].plugins[*].name", "$.consumers[*].plugins[*].name", "$.consumer_groups[*].plugins[*].name"]
+    severity: error
+    message: "overrides a mandatory plugin"
+    then:
+      function: pattern
+      functionOptions: {notMatch: "^(correlation-id|request-size-limiting|rate-limiting)$"}

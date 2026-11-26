@@ -1,9 +1,8 @@
 # The platform team reviews everything that decides what teams can do.
-*                    @example-org/platform-team
-/teams/payments/     @example-org/payments-team
-/teams/orders/       @example-org/orders-team
-# These stay with the platform team even inside a team's change:
-/teams.yaml          @example-org/platform-team
-/platform/           @example-org/platform-team
-/pipelines/          @example-org/platform-team
-/.github/            @example-org/platform-team
+*                        @example-org/platform-team
+/teams/payments/         @example-org/payments-team
+/teams/orders/           @example-org/orders-team
+# These stay with the platform team:
+/teams.yaml              @example-org/platform-team
+/platform/               @example-org/platform-team
+/.github/                @example-org/platform-team

@@ -95,7 +95,11 @@ case "${1:-}" in
     ;;
   down) secrets; compose down ;;
   clean)
-    secrets; compose down -v --remove-orphans
+    secrets
+    # act job containers and their volumes (act-toolcache is shared between runs: keep it)
+    docker ps -aq --filter "name=^act-" | xargs -r docker rm -f >/dev/null
+    docker volume ls -q --filter "name=^act-" | grep -v '^act-toolcache$' | xargs -r docker volume rm >/dev/null || true
+    compose down -v --remove-orphans
     for d in build .lab; do [[ -e $d ]] && rm -r "$d"; done
     rm -f .env platform/foundation/.terraform/environment platform/foundation/.terraform/terraform.tfstate
     ;;

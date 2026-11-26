@@ -41,7 +41,19 @@ jobs:
         if: steps.minor.outcome != 'failure'
         run: exit 1
 
+  list-teams:
+    runs-on: ubuntu-latest
+    outputs: {teams: "${{ steps.list.outputs.result }}"}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: list
+        uses: mikefarah/yq@f2944b823f84906a127dbd29e4c2a3e60c4e550e # v4.54.3
+        with: {cmd: "yq -o=json -I=0 '[.teams[].name]' teams.yaml"}
+
+  # Every team, against the central rulesets in this change: a new central rule is checked
+  # against all teams before it merges.
   teams:
-    strategy: {matrix: {team: [payments, orders]}}
+    needs: list-teams
+    strategy: {matrix: {team: "${{ fromJSON(needs.list-teams.outputs.teams) }}"}}
     uses: ./.github/workflows/team-pipeline.yaml
     with: {team: "${{ matrix.team }}", mode: lint}
