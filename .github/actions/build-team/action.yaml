@@ -6,6 +6,7 @@ description: Lint and build one team's decK file
 inputs:
   team: {required: true, description: "team name, as in teams.yaml"}
   team-dir: {required: true, description: "folder with openapi.yaml, plugins.yaml, consumers.yaml"}
+  environment: {required: false, default: "", description: "apply environments/<environment>.yaml, if the team has one"}
 outputs:
   file: {description: "the built decK file", value: "${{ steps.build.outputs.file }}"}
 runs:
@@ -34,6 +35,15 @@ runs:
         deck file add-tags -s "$OUT/3-merged.yaml" -o "$OUT/4-tagged.yaml" "$TAG"
         deck file patch -s "$OUT/4-tagged.yaml" -o "$OUT/kong.yaml" --selector '$' --value "_info:{\"select_tags\":[\"$TAG\"]}"
         echo "file=$OUT/kong.yaml" >> "$GITHUB_OUTPUT"
+    # Environment-specific values (an upstream per environment, say), before the decK file is
+    # linted, so a patch can't bring in anything the rulesets reject.
+    - name: Apply the environment's patch
+      if: inputs.environment != '' && hashFiles(format('{0}/environments/{1}.yaml', inputs.team-dir, inputs.environment)) != ''
+      shell: bash
+      env: {OUT: "build/${{ inputs.team }}", PATCH: "${{ inputs.team-dir }}/environments/${{ inputs.environment }}.yaml"}
+      run: |
+        deck file patch -s "$OUT/kong.yaml" -o "$OUT/kong-patched.yaml" "$PATCH"
+        mv "$OUT/kong-patched.yaml" "$OUT/kong.yaml"
     - name: Lint the decK file (central platform rules)
       shell: bash
       run: deck file lint -s "${{ steps.build.outputs.file }}" platform/governance/kong-rules.yaml

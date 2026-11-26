@@ -38,6 +38,7 @@ flowchart LR
 | Existing clients don't break by surprise | On pull requests, [oasdiff](https://github.com/oasdiff/oasdiff) compares the spec with the base branch: a breaking change without a new major `info.version` fails (`--fail-on MISSING-VERSION-BUMP`) | the ci workflow: a removed operation with a minor bump fails, with a major bump passes |
 | Teams can't do anything in workspaces that aren't theirs | Each team pipeline's RBAC user has a role only in the team's workspace, denied `/rbac`, `/workspaces` and `/vaults` | reads and writes in the other workspace → 403, creating users, roles or workspaces → 403 |
 | One repository or many | One reusable team pipeline: `teams.yaml` calls it for each team folder here, a team's own repository calls it at a pinned version (`examples/team-repo`) | the monorepo path end to end; the team-repository path is not run end to end (it needs two GitHub repositories) |
+| One spec, different environments | Optional `environments/<env>.yaml` with `deck file patch` changes (an upstream per environment), applied before the decK file is linted; every deploy first pings the environment and dumps the team's config as a rollback point | prod gets its patched backend, dev doesn't |
 | Nothing changes outside the pipelines | The drift workflow: `terraform plan -detailed-exitcode` for the platform; per team `deck gateway diff --non-zero-exit-code` and a lint of a workspace dump with the team's ownership rule | a hand edit, a plugin added by hand, a switched-off and a deleted mandatory plugin each fail the drift workflow, and the platform or teams workflow repairs them |
 
 ## Try it
@@ -74,7 +75,7 @@ teams.yaml                         team registry (platform-owned): one workspace
 platform/bootstrap/                one-time, by a person: the platform pipeline's RBAC user
 platform/foundation/               Terraform: workspaces, RBAC, entity rules, mandatory plugins
 platform/governance/               central rulesets: api-rules, kong-rules, teams/<team>.yaml
-teams/<team>/                      openapi.yaml, plugins.yaml, consumers.yaml, rules/ (team-owned)
+teams/<team>/                      openapi.yaml, plugins.yaml, consumers.yaml, rules/, environments/ (team-owned)
 .github/workflows/team-pipeline.yaml   the reusable team pipeline (lint, plan, deploy, drift)
 .github/actions/build-team/        lint the spec, build the decK file, lint it (both jobs use it)
 .github/actions/breaking-change/   oasdiff: breaking changes need a new major version (pull requests)

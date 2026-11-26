@@ -99,6 +99,10 @@ echo "== 6. Promotion"
 d=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $DEV/payments/services/team-payments | yq -p json .id)
 p=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $PROD/payments/services/team-payments | yq -p json .id)
 [[ -n $d && $d == "$p" ]] && ok "same service ID in dev and prod (built from the same spec)" || bad "same service ID in dev and prod"
+dp=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $DEV/payments/services/team-payments | yq -p json .path)
+pp=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $PROD/payments/services/team-payments | yq -p json .path)
+[[ $dp == /anything/payments && $pp == /anything/payments-prod ]] && ok "prod gets its environment patch (backend $pp), dev doesn't ($dp)" \
+  || bad "environment patch" "dev $dp, prod $pp"
 
 echo; echo "$pass passed, $fail failed"
 [[ $fail == 0 ]]

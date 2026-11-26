@@ -1,0 +1,7 @@
+# Production differs from dev in one place: the backend path (in a real estate, its host).
+# Applied with deck file patch before the decK file is linted.
+_format_version: "1.0"
+patches:
+  - selectors: ["$.services[*]"]
+    values:
+      path: /anything/payments-prod

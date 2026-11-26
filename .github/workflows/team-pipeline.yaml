@@ -75,7 +75,12 @@ jobs:
         with: {repository: "${{ inputs.team-repository }}", path: team}
       - id: build
         uses: ./.github/actions/build-team
-        with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}"}
+        with:
+          team: ${{ inputs.team }}
+          team-dir: ${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}
+          environment: ${{ inputs.environment }}
+      - name: Reach the environment with the team's token
+        run: deck gateway ping --workspace "$WORKSPACE"
       - name: Load the team's secrets
         if: env.TEAM_SECRETS != ''
         run: |
@@ -87,6 +92,14 @@ jobs:
       - name: Diff
         if: inputs.mode != 'drift'
         run: deck gateway diff --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}" | tee -a "$GITHUB_STEP_SUMMARY"
+      # A rollback point: the team's current config, before this sync. Consumers are left out so no
+      # API key ends up in an artifact. Roll back with deck gateway sync of this file.
+      - name: Back up the current config
+        if: inputs.mode == 'deploy'
+        run: deck gateway dump --workspace "$WORKSPACE" --select-tag "team-${{ inputs.team }}" --skip-consumers -o "build/backup-${{ inputs.team }}-${{ inputs.environment }}.yaml" --yes
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: inputs.mode == 'deploy' && env.ACT != 'true'   # act's local artifact server can't take v7
+        with: {name: "backup-${{ inputs.team }}-${{ inputs.environment }}-${{ github.run_id }}", path: "build/backup-${{ inputs.team }}-${{ inputs.environment }}.yaml", retention-days: 30}
       - name: Sync
         if: inputs.mode == 'deploy'
         run: deck gateway sync --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}"
