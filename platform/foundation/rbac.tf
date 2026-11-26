@@ -53,11 +53,11 @@ resource "kong-gateway_rbac_role_entity" "deployer_protect" {
   negative    = true
 }
 
-# Read-only access for the team's people (Kong Manager), mapped to an identity provider group
-# in production.
+# Read-only access for the team's people (Kong Manager). Named after Kong's workspace role
+# convention: workspace-read-only, "Read access to all endpoints in the Workspace".
 resource "kong-gateway_rbac_role" "viewer" {
   for_each  = local.teams
-  name      = "apiops-viewer"
+  name      = "workspace-read-only"
   comment   = "Read-only, for the ${each.key} team's people."
   workspace = kong-gateway_workspace.team[each.key].name
 }
@@ -78,6 +78,22 @@ resource "kong-gateway_rbac_role_entity" "viewer" {
   entity_id   = "*"
   entity_type = "wildcard"
   actions     = ["read"]
+}
+
+# The team's people: one group per team, read-only in its workspace. Map your identity
+# provider's group to it (Kong Manager with OIDC or LDAP group mapping): people can log in and
+# see their workspace, and every change goes through the pipeline.
+resource "kong-gateway_group" "developers" {
+  for_each = local.teams
+  name     = "${each.key}-developers"
+  comment  = "The ${each.key} team's people: read-only. Map the identity provider group here."
+}
+
+resource "kong-gateway_group_role" "developers" {
+  for_each  = local.teams
+  group_id  = kong-gateway_group.developers[each.key].id
+  role_id   = kong-gateway_rbac_role.viewer[each.key].id
+  workspace = kong-gateway_workspace.team[each.key].id
 }
 
 # The pipeline's own identity. No person uses this token.

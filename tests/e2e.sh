@@ -47,6 +47,20 @@ expect_code "payments creates an RBAC user" 403 "$PAY_DEV" POST $DEV/payments/rb
 expect_code "payments creates an RBAC role" 403 "$PAY_DEV" POST $DEV/payments/rbac/roles '{"name":"intruder"}'
 expect_code "payments creates a workspace" 403 "$PAY_DEV" POST $DEV/workspaces '{"name":"intruder"}'
 
+echo "== 2b. The team's people: read-only (the role the payments-developers group grants)"
+# Group members come from the identity provider at Kong Manager login, so the probe user gets
+# the group's role directly.
+roles=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $DEV/groups/payments-developers/roles | yq -p json '[.data[].rbac_role.name] | join(",")')
+[[ $roles == workspace-read-only ]] && ok "payments-developers maps to workspace-read-only" || bad "group role" "$roles"
+VT=$(openssl rand -hex 20)
+code "$PLATFORM_TOKEN" POST $DEV/payments/rbac/users "{\"name\":\"probe-viewer\",\"user_token\":\"$VT\"}" >/dev/null
+expect_code "a person gets workspace-read-only in payments" 201 "$PLATFORM_TOKEN" POST $DEV/payments/rbac/users/probe-viewer/roles '{"roles":"workspace-read-only"}'
+expect_code "they can read the payments workspace" 200 "$VT" GET $DEV/payments/services
+expect_code "they can't create a service" 403 "$VT" POST $DEV/payments/services '{"name":"x","url":"https://x.example"}'
+expect_code "they can't change the team's service" 403 "$VT" PUT $DEV/payments/services/team-payments '{"name":"team-payments","url":"https://x.example"}'
+expect_code "they can't read orders" 403 "$VT" GET $DEV/orders/services
+code "$PLATFORM_TOKEN" DELETE $DEV/payments/rbac/users/probe-viewer >/dev/null
+
 echo "== 3. Mandatory plugins (dev). PUT is how decK and Terraform update a plugin."
 for name in correlation-id request-size-limiting rate-limiting; do
   p=$(platform_plugin $DEV payments $name); id=$(yq -p json .id <<<"$p")

@@ -7,5 +7,5 @@ Entity permissions must exist before entity-level RBAC is enforced. Once per env
    `KONG_ADDR_<ENV>`, `SUPER_ADMIN_TOKEN_<ENV>` and a new random `PLATFORM_TOKEN_<ENV>`.
 3. Restart Kong with `enforce_rbac = both`.
 
-It creates the `ci-platform` user the platform workflows run as. Run it once: a second run fails
-on the existing role.
+It creates the `ci-platform` user the platform workflows run as, with Kong's built-in
+`super-admin` role. Run it once: a second run fails on the existing user.
