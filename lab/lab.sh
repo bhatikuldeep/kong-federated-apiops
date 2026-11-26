@@ -63,6 +63,8 @@ act_files() {
 
 run_act() { # workflow file, then act args
   local wf=$1; shift
+  # Never mount the working copy into a job: a checkout step would wipe it.
+  for a in "$@"; do [[ $a == --bind* ]] && { echo "refusing to run act with --bind" >&2; exit 2; }; done
   act workflow_dispatch -W ".github/workflows/$wf" --network fapi_default --pull=false \
     -P "ubuntu-latest=$runner" --var-file .lab/vars --secret-file .lab/secrets "$@"
 }
