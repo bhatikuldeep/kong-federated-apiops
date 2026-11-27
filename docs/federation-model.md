@@ -11,6 +11,18 @@
 | People's access in Kong Manager | creates the roles; the IdP assigns them | read only (`workspace-read-only`) |
 | Production | sets reviewers | merges; prod waits |
 
+## What protects a mandatory plugin
+
+![Lint, RBAC and drift around a mandatory plugin](guards.svg)
+
+Central rulesets run on every team; a team's own run as extra steps:
+
+![Central and team rulesets](rulesets.svg)
+
+A call to a team's route runs the platform's plugins and the team's:
+
+![One request through the payments route](request-sequence.svg)
+
 ## Workspace per team or one shared workspace?
 
 | | Workspace per team (this repo) | Shared workspace, tag per team |

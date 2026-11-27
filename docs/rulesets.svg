@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 452" width="1220" height="452" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif">
+  <style>
+    .kbd-bg { fill: var(--entry, #ffffff); }
+    .kbd-box { fill: var(--entry, #ffffff); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.5; }
+    .kbd-dp { fill: var(--accent-soft, rgba(0, 245, 160, 0.14)); stroke: var(--accent, #007a52); stroke-width: 1.5; }
+    .kbd-plugin { fill: var(--entry, #ffffff); stroke: var(--accent, #007a52); stroke-width: 1.5; }
+    .kbd-pipe { fill: rgba(99, 102, 241, 0.10); stroke: #6366f1; stroke-width: 1.5; }
+    .kbd-cp { fill: var(--entry, #ffffff); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .kbd-t { fill: var(--primary, #111418); font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-s { fill: var(--secondary, #4a4f57); font-size: 17px; text-anchor: middle; }
+    .kbd-ta { fill: var(--accent, #007a52); font-size: 23px; font-weight: 600; text-anchor: middle; }
+    .kbd-tp { fill: #4f46e5; font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-l { fill: var(--secondary, #4a4f57); font-size: 16px; }
+    .kbd-line { fill: none; stroke: var(--muted, #5a5f68); stroke-width: 1.8; }
+    .kbd-req { fill: none; stroke: var(--primary, #111418); stroke-width: 2.6; }
+    .kbd-otlp { fill: none; stroke: #6366f1; stroke-width: 2; }
+    .kbd-dash { fill: none; stroke: var(--muted, #5a5f68); stroke-width: 1.8; stroke-dasharray: 6 5; }
+    .kbd-scrape { fill: none; stroke: var(--accent, #007a52); stroke-width: 2; stroke-dasharray: 6 5; }
+    .dark .kbd-pipe { fill: rgba(129, 140, 248, 0.14); stroke: #818cf8; }
+    .dark .kbd-tp { fill: #a5b4fc; }
+    .dark .kbd-otlp { stroke: #818cf8; }
+  
+    .kbd-grp { fill: rgba(17, 20, 24, 0.025); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.2; }
+    .kbd-ws { fill: var(--entry, #ffffff); stroke: var(--accent, #007a52); stroke-width: 1.2; stroke-dasharray: 5 4; }
+    .kbd-gl { fill: var(--secondary, #4a4f57); font-size: 14px; font-weight: 700; letter-spacing: 0.08em; }
+    .kbd-pill { fill: var(--entry, #ffffff); }
+    .kbd-badge { fill: var(--primary, #111418); }
+    .kbd-bt { fill: var(--entry, #ffffff); font-size: 15px; font-weight: 700; text-anchor: middle; }
+    .kbd-w { fill: none; stroke: var(--primary, #111418); stroke-width: 3; stroke-linejoin: round; }
+    .kbd-u { fill: none; stroke: #6366f1; stroke-width: 2; stroke-linejoin: round; }
+    .kbd-r { fill: none; stroke: var(--accent, #007a52); stroke-width: 2.4; stroke-dasharray: 12 7; stroke-linejoin: round; }
+    .kbd-o { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 2.4; stroke-dasharray: 1 6; stroke-linecap: round; stroke-linejoin: round; }
+    .dark .kbd-u { stroke: #818cf8; }
+    .kbd-warn { fill: var(--entry, #ffffff); stroke: #c2410c; stroke-width: 1.5; }
+    .kbd-tw { fill: #c2410c; font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-lg { fill: var(--secondary, #4a4f57); font-size: 15px; }
+    .dark .kbd-grp { fill: rgba(255, 255, 255, 0.035); }
+    .dark .kbd-warn { stroke: #fb923c; }
+    .dark .kbd-tw { fill: #fb923c; }
+  </style>
+  <defs>
+    <marker id="kbd-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #5a5f68)"/></marker>
+    <marker id="kbd-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
+    <marker id="kbd-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
+    <marker id="kbd-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
+    <marker id="kbd-mw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
+    <marker id="kbd-mu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
+    <marker id="kbd-mo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #8a8f98)"/></marker>
+    <marker id="kbd-mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
+  </defs>
+  <rect class="kbd-bg" x="0" y="0" width="1220" height="452" rx="16"/>
+  <rect class="kbd-grp" x="30" y="24" width="330" height="404" rx="18"/>
+  <text class="kbd-gl" x="52" y="54">CENTRAL · PLATFORM REPOSITORY</text>
+  <rect class="kbd-box" x="52" y="66" width="286" height="96" rx="14"/>
+  <text class="kbd-t" x="195" y="109" text-anchor="middle">api-rules</text>
+  <text class="kbd-s" x="195" y="135" text-anchor="middle">every team&#x27;s spec</text>
+  <rect class="kbd-box" x="52" y="182" width="286" height="96" rx="14"/>
+  <text class="kbd-t" x="195" y="225" text-anchor="middle">kong-rules</text>
+  <text class="kbd-s" x="195" y="251" text-anchor="middle">every decK file</text>
+  <rect class="kbd-box" x="52" y="298" width="286" height="96" rx="14"/>
+  <text class="kbd-t" x="195" y="341" text-anchor="middle">teams/&lt;team&gt;</text>
+  <text class="kbd-s" x="195" y="367" text-anchor="middle">path prefix, ownership</text>
+  <rect class="kbd-grp" x="860" y="24" width="330" height="404" rx="18"/>
+  <text class="kbd-gl" x="882" y="54">OWN · TEAM FOLDER</text>
+  <rect class="kbd-box" x="882" y="66" width="286" height="96" rx="14"/>
+  <text class="kbd-t" x="1025" y="109" text-anchor="middle">rules/api-rules</text>
+  <text class="kbd-s" x="1025" y="135" text-anchor="middle">the team&#x27;s API conventions</text>
+  <rect class="kbd-box" x="882" y="240" width="286" height="96" rx="14"/>
+  <text class="kbd-t" x="1025" y="283" text-anchor="middle">rules/kong-rules</text>
+  <text class="kbd-s" x="1025" y="309" text-anchor="middle">the team&#x27;s Kong rules</text>
+  <rect class="kbd-pipe" x="440" y="66" width="340" height="96" rx="14"/>
+  <text class="kbd-tp" x="610" y="109" text-anchor="middle">Lint the spec</text>
+  <text class="kbd-s" x="610" y="135" text-anchor="middle">deck file lint</text>
+  <rect class="kbd-pipe" x="440" y="240" width="340" height="136" rx="14"/>
+  <text class="kbd-tp" x="610" y="290" text-anchor="middle">Lint the decK file</text>
+  <text class="kbd-s" x="610" y="316" text-anchor="middle">deck file lint, one</text>
+  <text class="kbd-s" x="610" y="342" text-anchor="middle">step per ruleset</text>
+  <path class="kbd-u" d="M340,114 L436,114" marker-end="url(#kbd-mu)"/>
+  <path class="kbd-u" d="M340,230 L378,230 Q390,230 390,242 L390,278 Q390,290 402,290 L436,290" marker-end="url(#kbd-mu)"/>
+  <path class="kbd-u" d="M340,346 L380,346 Q390,346 390,336 L390,336 Q390,326 400,326 L436,326" marker-end="url(#kbd-mu)"/>
+  <path class="kbd-u" d="M880,114 L784,114" marker-end="url(#kbd-mu)"/>
+  <path class="kbd-u" d="M880,288 L784,288" marker-end="url(#kbd-mu)"/>
+  <text class="kbd-lg" x="610" y="418" text-anchor="middle">Teams can add rules; they can&#x27;t relax a central one.</text>
+  <circle class="kbd-badge" cx="440" cy="66" r="14"/>
+  <text class="kbd-bt" x="440" y="71">1</text>
+  <circle class="kbd-badge" cx="440" cy="240" r="14"/>
+  <text class="kbd-bt" x="440" y="245">2</text>
+</svg>

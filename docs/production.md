@@ -19,6 +19,16 @@
 - **Use `PUT`, not `PATCH`, for plugins and consumers in scripts.** With entity-level RBAC on 3.14
   and 3.16, `PATCH` by ID on them returned `403`. decK and Terraform use `PUT`.
 
+## The pipelines
+
+![The team pipeline: lint and build, then plan or deploy per environment](team-pipeline.svg)
+
+![Bootstrap, the platform workflow and the weekday drift check](drift.svg)
+
+Kong Manager sign-in with an identity provider (`make sso`):
+
+![Sign-in through Keycloak, roles from the kong_roles claim](sso-sequence.svg)
+
 ## GitHub settings
 
 Kong tokens live in GitHub **environments**, never at repository level: a repository secret is

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 290" width="1220" height="290" font-family="Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif">
+  <style>
+    .kbd-bg { fill: var(--entry, #ffffff); }
+    .kbd-box { fill: var(--entry, #ffffff); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.5; }
+    .kbd-dp { fill: var(--accent-soft, rgba(0, 245, 160, 0.14)); stroke: var(--accent, #007a52); stroke-width: 1.5; }
+    .kbd-plugin { fill: var(--entry, #ffffff); stroke: var(--accent, #007a52); stroke-width: 1.5; }
+    .kbd-pipe { fill: rgba(99, 102, 241, 0.10); stroke: #6366f1; stroke-width: 1.5; }
+    .kbd-cp { fill: var(--entry, #ffffff); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .kbd-t { fill: var(--primary, #111418); font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-s { fill: var(--secondary, #4a4f57); font-size: 17px; text-anchor: middle; }
+    .kbd-ta { fill: var(--accent, #007a52); font-size: 23px; font-weight: 600; text-anchor: middle; }
+    .kbd-tp { fill: #4f46e5; font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-l { fill: var(--secondary, #4a4f57); font-size: 16px; }
+    .kbd-line { fill: none; stroke: var(--muted, #5a5f68); stroke-width: 1.8; }
+    .kbd-req { fill: none; stroke: var(--primary, #111418); stroke-width: 2.6; }
+    .kbd-otlp { fill: none; stroke: #6366f1; stroke-width: 2; }
+    .kbd-dash { fill: none; stroke: var(--muted, #5a5f68); stroke-width: 1.8; stroke-dasharray: 6 5; }
+    .kbd-scrape { fill: none; stroke: var(--accent, #007a52); stroke-width: 2; stroke-dasharray: 6 5; }
+    .dark .kbd-pipe { fill: rgba(129, 140, 248, 0.14); stroke: #818cf8; }
+    .dark .kbd-tp { fill: #a5b4fc; }
+    .dark .kbd-otlp { stroke: #818cf8; }
+  
+    .kbd-grp { fill: rgba(17, 20, 24, 0.025); stroke: var(--border-strong, #c9c9c2); stroke-width: 1.2; }
+    .kbd-ws { fill: var(--entry, #ffffff); stroke: var(--accent, #007a52); stroke-width: 1.2; stroke-dasharray: 5 4; }
+    .kbd-gl { fill: var(--secondary, #4a4f57); font-size: 14px; font-weight: 700; letter-spacing: 0.08em; }
+    .kbd-pill { fill: var(--entry, #ffffff); }
+    .kbd-badge { fill: var(--primary, #111418); }
+    .kbd-bt { fill: var(--entry, #ffffff); font-size: 15px; font-weight: 700; text-anchor: middle; }
+    .kbd-w { fill: none; stroke: var(--primary, #111418); stroke-width: 3; stroke-linejoin: round; }
+    .kbd-u { fill: none; stroke: #6366f1; stroke-width: 2; stroke-linejoin: round; }
+    .kbd-r { fill: none; stroke: var(--accent, #007a52); stroke-width: 2.4; stroke-dasharray: 12 7; stroke-linejoin: round; }
+    .kbd-o { fill: none; stroke: var(--muted, #8a8f98); stroke-width: 2.4; stroke-dasharray: 1 6; stroke-linecap: round; stroke-linejoin: round; }
+    .dark .kbd-u { stroke: #818cf8; }
+    .kbd-warn { fill: var(--entry, #ffffff); stroke: #c2410c; stroke-width: 1.5; }
+    .kbd-tw { fill: #c2410c; font-size: 22px; font-weight: 600; text-anchor: middle; }
+    .kbd-lg { fill: var(--secondary, #4a4f57); font-size: 15px; }
+    .dark .kbd-grp { fill: rgba(255, 255, 255, 0.035); }
+    .dark .kbd-warn { stroke: #fb923c; }
+    .dark .kbd-tw { fill: #fb923c; }
+  </style>
+  <defs>
+    <marker id="kbd-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #5a5f68)"/></marker>
+    <marker id="kbd-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
+    <marker id="kbd-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
+    <marker id="kbd-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
+    <marker id="kbd-mw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--primary, #111418)"/></marker>
+    <marker id="kbd-mu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6366f1"/></marker>
+    <marker id="kbd-mo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted, #8a8f98)"/></marker>
+    <marker id="kbd-mr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent, #007a52)"/></marker>
+  </defs>
+  <rect class="kbd-bg" x="0" y="0" width="1220" height="290" rx="16"/>
+  <rect class="kbd-box" x="30" y="70" width="160" height="120" rx="14"/>
+  <text class="kbd-t" x="110" y="112" text-anchor="middle">A change</text>
+  <text class="kbd-s" x="110" y="138" text-anchor="middle">pipeline or</text>
+  <text class="kbd-s" x="110" y="164" text-anchor="middle">token</text>
+  <rect class="kbd-pipe" x="238" y="60" width="200" height="140" rx="14"/>
+  <text class="kbd-tp" x="338" y="112" text-anchor="middle">Lint</text>
+  <text class="kbd-s" x="338" y="138" text-anchor="middle">no mandatory names,</text>
+  <text class="kbd-s" x="338" y="164" text-anchor="middle">globals, ordering</text>
+  <path class="kbd-w" d="M190,130 L234,130" marker-end="url(#kbd-mw)"/>
+  <rect class="kbd-dp" x="486" y="60" width="200" height="140" rx="14"/>
+  <text class="kbd-ta" x="586" y="125" text-anchor="middle">Endpoint RBAC</text>
+  <text class="kbd-s" x="586" y="151" text-anchor="middle">own workspace only</text>
+  <path class="kbd-w" d="M438,130 L482,130" marker-end="url(#kbd-mw)"/>
+  <rect class="kbd-dp" x="734" y="60" width="200" height="140" rx="14"/>
+  <text class="kbd-ta" x="834" y="112" text-anchor="middle">Entity RBAC</text>
+  <text class="kbd-s" x="834" y="138" text-anchor="middle">change or delete a</text>
+  <text class="kbd-s" x="834" y="164" text-anchor="middle">mandatory one: 403</text>
+  <path class="kbd-w" d="M686,130 L730,130" marker-end="url(#kbd-mw)"/>
+  <rect class="kbd-pipe" x="982" y="60" width="200" height="140" rx="14"/>
+  <text class="kbd-tp" x="1082" y="112" text-anchor="middle">Drift workflow</text>
+  <text class="kbd-s" x="1082" y="138" text-anchor="middle">anything outside Git</text>
+  <text class="kbd-s" x="1082" y="164" text-anchor="middle">fails the run</text>
+  <path class="kbd-w" d="M934,130 L978,130" marker-end="url(#kbd-mw)"/>
+  <path class="kbd-u" d="M238,226 L238,234 L438,234 L438,226"/>
+  <text class="kbd-lg" x="338" y="262" text-anchor="middle">pipelines only</text>
+  <path class="kbd-u" d="M486,226 L486,234 L934,234 L934,226"/>
+  <text class="kbd-lg" x="710" y="262" text-anchor="middle">in Kong, for every token</text>
+  <path class="kbd-u" d="M982,226 L982,234 L1182,234 L1182,226"/>
+  <text class="kbd-lg" x="1082" y="262" text-anchor="middle">every weekday, after the fact</text>
+  <circle class="kbd-badge" cx="338" cy="60" r="14"/>
+  <text class="kbd-bt" x="338" y="65">1</text>
+  <circle class="kbd-badge" cx="586" cy="60" r="14"/>
+  <text class="kbd-bt" x="586" y="65">2</text>
+  <circle class="kbd-badge" cx="834" cy="60" r="14"/>
+  <text class="kbd-bt" x="834" y="65">3</text>
+  <circle class="kbd-badge" cx="1082" cy="60" r="14"/>
+  <text class="kbd-bt" x="1082" y="65">4</text>
+</svg>
