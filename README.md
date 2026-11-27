@@ -1,7 +1,27 @@
 # Federated APIOps for Kong Gateway Enterprise
 
-A platform team owns Kong Gateway Enterprise 3.16. API teams ship their own APIs from an OpenAPI
-spec. Nobody can touch another team's workspace or the platform's mandatory plugins.
+A working reference for running one Kong Gateway Enterprise 3.16 for many API teams.
+
+## The federated model
+
+Federated APIOps is a way for many API teams to share one API gateway. A platform team runs the
+gateway and owns what every API must have (here a request ID, a size limit and a rate limit) and
+who may change what. Each API team owns its own APIs and ships them through a pipeline, starting
+from its OpenAPI spec, without a ticket to the platform team.
+
+Why use it:
+
+- **Teams ship on their own schedule.** A merged spec change deploys through the team's pipeline;
+  the platform team isn't in the loop for each change.
+- **The guardrails hold.** Mandatory plugins, workspaces and access rules belong to the platform,
+  and teams get `403` if they try to change them.
+- **Every API meets the same bar.** All teams pass the same central rulesets, then their own.
+- **A mistake stays in one team's workspace.** Each team's pipeline token works only there.
+- **Git is the record.** Changes go through pull requests, and a weekday drift check catches
+  anything changed by hand.
+
+With one team on one gateway, this is more than you need: a workspace, a decK pipeline and the
+rulesets are enough.
 
 ![The federated model](docs/model.svg)
 
