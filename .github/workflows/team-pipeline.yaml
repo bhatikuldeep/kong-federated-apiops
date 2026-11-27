@@ -5,33 +5,50 @@
 #   mode plan    + validate and diff against the environment (pull requests)
 #   mode deploy  + sync and a smoke test (merge to main)
 #   mode drift   compare the environment with the repository (scheduled)
+#
+# Call it with `secrets: inherit`. The gateway job runs in the GitHub environment `environment`
+# (or `github-environment`) and reads that environment's settings there, so prod secrets stay
+# behind the prod environment's rules. <TEAM> and <ENV> are upper case (PAYMENTS, PROD):
+#   variables KONG_ADDR_<ENV>, PROXY_URL_<ENV> (smoke test), PROXY_INSECURE (self-signed lab proxy only)
+#   secrets   KONG_TOKEN_<TEAM>_<ENV>, TEAM_SECRETS_<TEAM>_<ENV> (JSON of the team's DECK_ variables,
+#             e.g. {"DECK_PAYMENTS_WEB_KEY":"..."}), SMOKE_KEY_<TEAM>_<ENV> (an API key for the smoke test)
+#   repository: variable KONG_ENABLED=true (no Kong calls without it), optional KONG_RUNNER (a runner
+#             label that can reach the Admin API), optional secret REPO_READ_TOKEN (a private platform
+#             repository, read from a team's own repository)
 name: team-pipeline
 on:
   workflow_call:
     inputs:
-      team: {type: string, required: true}
+      team: {type: string, required: true, description: "lower-case letters and digits; also the workspace name"}
       mode: {type: string, required: true, description: "lint, plan, deploy or drift"}
-      environment: {type: string, default: ""}
-      kong-addr: {type: string, default: "", description: "the environment's Admin API"}
-      proxy-url: {type: string, default: "", description: "the environment's proxy, for the smoke test"}
-      proxy-insecure: {type: boolean, default: false, description: "only for a self-signed lab proxy"}
+      environment: {type: string, default: "dev", description: "dev or prod: which settings and environments/<env>.yaml"}
+      github-environment: {type: string, default: "", description: "the GitHub environment to run in; empty: environment"}
       team-repository: {type: string, default: "", description: "a team's own repository; empty: teams/<team> here"}
       platform-repository: {type: string, default: "", description: "empty: this repository"}
       platform-ref: {type: string, default: ""}
-    secrets:
-      KONG_TOKEN: {required: false, description: "the team pipeline's RBAC token for this environment"}
-      TEAM_SECRETS: {required: false, description: 'JSON of DECK_ variables the team files use, e.g. {"DECK_WEB_KEY":"..."}'}
-      SMOKE_KEY: {required: false, description: "a consumer key for the smoke test"}
-      REPO_READ_TOKEN: {required: false, description: "read access to a private platform repository, for a team's own repository"}
 
 permissions:
   contents: read
+
+defaults:
+  run: {shell: bash}   # bash -e -o pipefail: a failing command in a pipe fails the step
 
 jobs:
   lint:
     name: lint and build (${{ inputs.team }})
     runs-on: ubuntu-latest
+    outputs:
+      team: ${{ steps.names.outputs.team }}
+      env: ${{ steps.names.outputs.env }}
     steps:
+      # The team name ends up in paths, tags, secret names and shell commands: check it first.
+      - id: names
+        env: {TEAM: "${{ inputs.team }}", ENVIRONMENT: "${{ inputs.environment }}", MODE: "${{ inputs.mode }}"}
+        run: |
+          [[ $TEAM =~ ^[a-z][a-z0-9]{0,29}$ ]] || { echo "::error::team must be lower-case letters and digits: $TEAM"; exit 1; }
+          [[ $ENVIRONMENT =~ ^(dev|prod)$ ]] || { echo "::error::environment must be dev or prod"; exit 1; }
+          [[ $MODE =~ ^(lint|plan|deploy|drift)$ ]] || { echo "::error::mode must be lint, plan, deploy or drift"; exit 1; }
+          echo "team=${TEAM^^}" >> "$GITHUB_OUTPUT"; echo "env=${ENVIRONMENT^^}" >> "$GITHUB_OUTPUT"
       # The platform repository at the root (rules and the build action); a team's own repository under team/.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.platform-repository == ''
@@ -58,16 +75,21 @@ jobs:
   gateway:
     name: ${{ inputs.mode }} ${{ inputs.team }} in ${{ inputs.environment }}
     needs: lint
-    if: inputs.mode != 'lint'
+    if: inputs.mode != 'lint' && vars.KONG_ENABLED == 'true'
     runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}   # a runner that can reach the Admin API
-    environment: ${{ inputs.environment }}
-    concurrency: {group: "kong-${{ inputs.environment }}-${{ inputs.team }}", cancel-in-progress: false}
+    environment: ${{ inputs.github-environment || inputs.environment }}
+    # Deploys queue per team and environment; plans and drift runs never cancel a queued deploy.
+    concurrency:
+      group: ${{ inputs.mode == 'deploy' && format('kong-{0}-{1}', inputs.environment, inputs.team) || format('kong-{0}-{1}-{2}-{3}', inputs.mode, inputs.environment, inputs.team, github.run_id) }}
+      cancel-in-progress: false
     env:
-      DECK_KONG_ADDR: ${{ inputs.kong-addr }}
-      DECK_HEADERS: "Kong-Admin-Token:${{ secrets.KONG_TOKEN }}"
+      DECK_KONG_ADDR: ${{ vars[format('KONG_ADDR_{0}', needs.lint.outputs.env)] }}
+      DECK_HEADERS: "Kong-Admin-Token:${{ secrets[format('KONG_TOKEN_{0}_{1}', needs.lint.outputs.team, needs.lint.outputs.env)] }}"
       DECK_SKIP_WORKSPACE_CRUD: "true"
       WORKSPACE: ${{ inputs.team }}   # one workspace per team; passed as --workspace on every call
-      TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
+      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}_{1}', needs.lint.outputs.team, needs.lint.outputs.env)] }}
+      PROXY_URL: ${{ vars[format('PROXY_URL_{0}', needs.lint.outputs.env)] }}
+      PROXY_INSECURE: ${{ vars.PROXY_INSECURE }}
     steps:
       # The platform repository at the root (rules and the build action); a team's own repository under team/.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -78,6 +100,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.team-repository != ''
         with: {repository: "${{ inputs.team-repository }}", path: team}
+      - name: Settings for this environment are set
+        run: |
+          [ -n "$DECK_KONG_ADDR" ] || { echo "::error::variable KONG_ADDR_${{ needs.lint.outputs.env }} is not set for this environment"; exit 1; }
+          [ "$DECK_HEADERS" != "Kong-Admin-Token:" ] || { echo "::error::secret KONG_TOKEN_${{ needs.lint.outputs.team }}_${{ needs.lint.outputs.env }} is not set for this environment"; exit 1; }
       - id: build
         uses: ./.github/actions/build-team
         with:
@@ -98,7 +124,8 @@ jobs:
         if: inputs.mode != 'drift'
         run: deck gateway diff --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}" | tee -a "$GITHUB_STEP_SUMMARY"
       # A rollback point: the team's current config, before this sync. Consumers are left out so no
-      # API key ends up in an artifact. Roll back with deck gateway sync of this file.
+      # API key ends up in an artifact, so restore it with --skip-consumers (or the sync deletes them):
+      #   deck gateway sync --workspace <team> --skip-consumers backup-<team>-<env>.yaml
       - name: Back up the current config
         if: inputs.mode == 'deploy'
         run: deck gateway dump --workspace "$WORKSPACE" --select-tag "team-${{ inputs.team }}" --skip-consumers -o "build/backup-${{ inputs.team }}-${{ inputs.environment }}.yaml" --yes
@@ -109,13 +136,13 @@ jobs:
         if: inputs.mode == 'deploy'
         run: deck gateway sync --workspace "$WORKSPACE" "${{ steps.build.outputs.file }}"
       - name: Smoke test
-        if: inputs.mode == 'deploy' && inputs.proxy-url != ''
+        if: inputs.mode == 'deploy' && env.PROXY_URL != ''
         env:
-          SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
-        run: >-
-          curl --fail --silent --output /dev/null
-          --retry 10 --retry-delay 1 --retry-all-errors ${{ inputs.proxy-insecure && '--insecure' || '' }}
-          --header "apikey: $SMOKE_KEY" "${{ inputs.proxy-url }}/${{ inputs.team }}"
+          SMOKE_KEY: ${{ secrets[format('SMOKE_KEY_{0}_{1}', needs.lint.outputs.team, needs.lint.outputs.env)] }}
+        run: |
+          insecure=(); [ "$PROXY_INSECURE" = true ] && insecure=(--insecure)
+          curl --fail --silent --output /dev/null --retry 10 --retry-delay 1 --retry-all-errors "${insecure[@]}" \
+            --header "apikey: $SMOKE_KEY" "$PROXY_URL/$WORKSPACE"
       - name: "Drift: managed config differs from the repository"
         if: inputs.mode == 'drift'
         run: deck gateway diff --workspace "$WORKSPACE" --non-zero-exit-code "${{ steps.build.outputs.file }}"

@@ -1,7 +1,9 @@
 # In a team's own repository (one repository per team): openapi.yaml, plugins.yaml and
 # consumers.yaml at the root, optionally rules/ with the team's own rulesets, and this workflow.
-# The pipeline and the central rulesets come from the platform repository at a pinned version, so
-# the team can't change them.
+# The pipeline and the central rulesets come from the platform repository at a pinned version.
+# Replace example-org/kong-platform (four places), v1.0.0 (four places) and the team name (twice).
+# Settings: as team-pipeline.yaml describes, in this repository's dev, prod and prod-drift
+# environments, plus the repository variable KONG_ENABLED=true.
 name: deploy
 on:
   pull_request: {}
@@ -18,33 +20,22 @@ jobs:
       team: payments
       mode: ${{ github.event_name == 'pull_request' && 'plan' || github.event_name == 'schedule' && 'drift' || 'deploy' }}
       environment: dev
-      kong-addr: ${{ vars.KONG_ADDR_DEV }}
-      proxy-url: ${{ vars.PROXY_URL_DEV }}
       team-repository: ${{ github.repository }}
       platform-repository: example-org/kong-platform
       platform-ref: v1.0.0
-    secrets:
-      KONG_TOKEN: ${{ secrets.KONG_TOKEN_DEV }}
-      TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
-      SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
-      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}   # only if the platform repository is private
+    secrets: inherit
 
   prod:
     needs: dev
     # deploy: only after dev succeeded; drift: check prod even when dev drifted
-    if: github.event_name == 'push' || (github.event_name == 'schedule' && !cancelled())
+    if: (github.event_name == 'push' && success()) || (github.event_name == 'schedule' && !cancelled())
     uses: example-org/kong-platform/.github/workflows/team-pipeline.yaml@v1.0.0
     with:
       team: payments
       mode: ${{ github.event_name == 'schedule' && 'drift' || 'deploy' }}
       environment: prod
-      kong-addr: ${{ vars.KONG_ADDR_PROD }}
-      proxy-url: ${{ vars.PROXY_URL_PROD }}
+      github-environment: ${{ github.event_name == 'schedule' && 'prod-drift' || 'prod' }}
       team-repository: ${{ github.repository }}
       platform-repository: example-org/kong-platform
       platform-ref: v1.0.0
-    secrets:
-      KONG_TOKEN: ${{ secrets.KONG_TOKEN_PROD }}
-      TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
-      SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
-      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}   # only if the platform repository is private
+    secrets: inherit

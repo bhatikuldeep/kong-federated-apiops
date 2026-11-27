@@ -24,8 +24,10 @@ rules:
     description: OWASP API2 (broken authentication). Every API declares how callers authenticate.
     given: $
     severity: error
-    message: a top-level security requirement is required
-    then: {field: security, function: defined}
+    message: a top-level security requirement is required (an empty list means no authentication)
+    then:
+      - {field: security, function: defined}
+      - {field: security, function: length, functionOptions: {min: 1}}
   no-basic-auth:
     description: OWASP API2. Prefer API keys or OAuth over HTTP basic authentication.
     given: $.components.securitySchemes[*]

@@ -1,4 +1,7 @@
 # Every weekday morning: does each environment still match the repository? A failed job is drift.
+# Prod runs in the GitHub environment prod-drift: the same settings as prod, limited to the main
+# branch, no reviewers (drift changes nothing, so it shouldn't wait for an approval every morning).
+# Settings: as platform.yaml and team-pipeline.yaml, in the dev and prod-drift environments.
 name: drift
 on:
   schedule: [{cron: "17 6 * * 1-5"}]
@@ -9,18 +12,19 @@ permissions:
 
 jobs:
   platform:
+    if: vars.KONG_ENABLED == 'true'
     strategy:
       fail-fast: false
       matrix:
-        include: [{environment: dev, env: DEV}, {environment: prod, env: PROD}]
+        include: [{environment: dev, env: DEV, github: dev}, {environment: prod, env: PROD, github: prod-drift}]
     runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
-    environment: ${{ matrix.environment }}
+    environment: ${{ matrix.github }}
     defaults:
       run: {working-directory: platform/foundation}
     env:
       TF_VAR_admin_url: ${{ vars[format('KONG_ADDR_{0}', matrix.env)] }}
       TF_VAR_admin_token: ${{ secrets[format('PLATFORM_TOKEN_{0}', matrix.env)] }}
-      PG_CONN_STR: ${{ secrets.TF_STATE_PG_CONN }}   # the Terraform state backend
+      PG_CONN_STR: ${{ secrets[format('TF_STATE_PG_CONN_{0}', matrix.env)] }}   # the Terraform state backend
       TF_IN_AUTOMATION: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -29,9 +33,10 @@ jobs:
       - run: terraform init -input=false
       - run: terraform workspace select -or-create ${{ matrix.environment }}
       - name: "Drift: Kong differs from platform/foundation (exit code 2)"
-        run: terraform plan -input=false -detailed-exitcode
+        run: terraform plan -input=false -lock-timeout=5m -detailed-exitcode
 
   teams:
+    if: vars.KONG_ENABLED == 'true'
     runs-on: ubuntu-latest
     outputs: {teams: "${{ steps.list.outputs.result }}"}
     steps:
@@ -42,18 +47,16 @@ jobs:
 
   dev:
     needs: teams
+    if: needs.teams.outputs.teams != '[]'
     strategy: {matrix: {team: "${{ fromJSON(needs.teams.outputs.teams) }}"}, fail-fast: false}
     uses: ./.github/workflows/team-pipeline.yaml
-    with: {team: "${{ matrix.team }}", mode: drift, environment: dev, kong-addr: "${{ vars.KONG_ADDR_DEV }}"}
-    secrets:
-      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_DEV', matrix.team)] }}
-      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
+    with: {team: "${{ matrix.team }}", mode: drift, environment: dev}
+    secrets: inherit
 
   prod:
     needs: teams
+    if: needs.teams.outputs.teams != '[]'
     strategy: {matrix: {team: "${{ fromJSON(needs.teams.outputs.teams) }}"}, fail-fast: false}
     uses: ./.github/workflows/team-pipeline.yaml
-    with: {team: "${{ matrix.team }}", mode: drift, environment: prod, kong-addr: "${{ vars.KONG_ADDR_PROD }}"}
-    secrets:
-      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_PROD', matrix.team)] }}
-      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
+    with: {team: "${{ matrix.team }}", mode: drift, environment: prod, github-environment: prod-drift}
+    secrets: inherit

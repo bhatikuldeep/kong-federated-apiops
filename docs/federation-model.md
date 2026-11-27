@@ -44,9 +44,9 @@ Both use the same reusable workflow, so a team moves without changing its files.
 3. **Team repository:** move `teams/<team>/*` to its root and copy
    `examples/team-repo/.github/workflows/deploy.yaml`. Set `team`, `platform-repository` and
    `platform-ref` to the release tag.
-4. **Secrets and environments** in the team repository: `KONG_TOKEN_DEV`, `KONG_TOKEN_PROD`
-   (`terraform output ci_tokens`), `TEAM_SECRETS`, `SMOKE_KEY`, and the `KONG_ADDR_*` /
-   `PROXY_URL_*` variables. Give the `prod` environment the platform team as required reviewers.
+4. **Settings** in the team repository: the `dev`, `prod` and `prod-drift` environments with the
+   team's values ([production.md, GitHub settings](production.md#github-settings)), and the
+   repository variable `KONG_ENABLED=true`. Give `prod` the platform team as required reviewers.
    If the platform repository is private, add `REPO_READ_TOKEN`: a fine-grained token with access
    to the platform repository only and **Contents: read-only**. The built-in token is
    ["limited to the repository that contains your workflow"](https://docs.github.com/en/actions/concepts/security/github_token),
@@ -55,10 +55,12 @@ Both use the same reusable workflow, so a team moves without changing its files.
    merge and drift every weekday.
 
 The platform keeps control through the pinned workflow and rulesets: a team changes its files, not
-the pipeline. The platform's own CI uses the `payments` example as a test fixture
-(`tests/fixtures/`, `ci.yaml`); keep a copy there if you move `payments` out.
+the pipeline. The platform's own CI reads `teams/payments/` and
+`platform/governance/teams/payments.yaml` as test input (`ci.yaml`): keep `teams/payments/` here,
+or point `ci.yaml` at a copy under `tests/fixtures/`.
 
 ## One repository per environment?
 
-No. The same files go to dev and prod; addresses and tokens live in GitHub environments, and
-`environments/<env>.yaml` holds the few values that differ.
+No. The same files go to dev and prod; addresses and tokens live in the `dev` and `prod` GitHub
+environments ([settings](production.md#github-settings)), and `environments/<env>.yaml` holds the
+few values that differ.

@@ -1,9 +1,17 @@
 # Access per team workspace. Kong runs with enforce_rbac = both, so a request must pass the
 # endpoint rules and the entity rules.
 locals {
-  # The deployer may do anything in its workspace, except access control and the workspace itself.
-  # Kong's RBAC docs: covering all of the RBAC API takes /rbac/* down to five segments.
-  deployer_deny = ["/rbac", "/rbac/*", "/rbac/*/*", "/rbac/*/*/*", "/rbac/*/*/*/*", "/rbac/*/*/*/*/*", "/workspaces", "/workspaces/*", "/vaults", "/vaults/*"]
+  # The deployer may do anything in its workspace, except access control, the workspace itself and
+  # gateway-wide settings. Kong's RBAC docs: `*` replaces one path segment, so each depth is listed
+  # (all of the RBAC API takes /rbac/* down to five segments).
+  deployer_deny = [
+    "/rbac", "/rbac/*", "/rbac/*/*", "/rbac/*/*/*", "/rbac/*/*/*/*", "/rbac/*/*/*/*/*",
+    "/workspaces", "/workspaces/*", "/vaults", "/vaults/*",
+    "/admins", "/admins/*", "/admins/*/*", "/admins/*/*/*", # Kong Manager identities and their roles
+    "/groups", "/groups/*", "/groups/*/*",                  # identity provider group mappings
+  ]
+  # Not even readable: the license, webhooks to any URL, and the keyring's encryption keys.
+  sensitive = ["/licenses", "/licenses/*", "/event-hooks", "/event-hooks/*", "/event-hooks/*/*", "/keyring", "/keyring/*", "/keyring/*/*"]
 }
 
 resource "kong-gateway_rbac_role" "deployer" {
@@ -28,6 +36,15 @@ resource "kong-gateway_rbac_role_endpoint" "deployer_deny" {
   workspace = kong-gateway_workspace.team[each.value.team].name
   endpoint  = each.value.endpoint
   actions   = ["create", "update", "delete"]
+  negative  = true
+}
+
+resource "kong-gateway_rbac_role_endpoint" "deployer_deny_sensitive" {
+  for_each  = { for p in setproduct(keys(local.teams), local.sensitive) : "${p[0]}|${p[1]}" => { team = p[0], endpoint = p[1] } }
+  role_id   = kong-gateway_rbac_role.deployer[each.value.team].id
+  workspace = kong-gateway_workspace.team[each.value.team].name
+  endpoint  = each.value.endpoint
+  actions   = ["read", "create", "update", "delete"]
   negative  = true
 }
 
@@ -70,6 +87,15 @@ resource "kong-gateway_rbac_role_endpoint" "viewer" {
   endpoint  = "*"
   actions   = ["read"]
   negative  = false
+}
+
+resource "kong-gateway_rbac_role_endpoint" "viewer_deny_sensitive" {
+  for_each  = { for p in setproduct(keys(local.teams), local.sensitive) : "${p[0]}|${p[1]}" => { team = p[0], endpoint = p[1] } }
+  role_id   = kong-gateway_rbac_role.viewer[each.value.team].id
+  workspace = kong-gateway_workspace.team[each.value.team].name
+  endpoint  = each.value.endpoint
+  actions   = ["read"]
+  negative  = true
 }
 
 resource "kong-gateway_rbac_role_entity" "viewer" {

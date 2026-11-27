@@ -20,6 +20,11 @@ Why use it:
 - **Git is the record.** Changes go through pull requests, and a weekday drift check catches
   anything changed by hand.
 
+Federated sits between centralised (the platform team runs every API) and decentralised (every
+team runs its own gateway). This repository is the shared-gateway variant: one Kong Gateway
+Enterprise, one workspace per team. The heavier variant gives each team its own control plane or
+its own data planes.
+
 With one team on one gateway, this is more than you need: a workspace, a decK pipeline and the
 rulesets are enough.
 
@@ -75,9 +80,11 @@ examples/team-repo/      a team with its own repository
 
 ## Use it
 
-1. List your teams in `teams.yaml`; set your mandatory plugins and allowed plugin list.
+1. List your teams in `teams.yaml`; set your mandatory plugins (`platform/foundation/mandatory-plugins.tf`)
+   and allowed plugin list (`platform/governance/kong-rules.yaml`).
 2. Bootstrap each environment once: [platform/bootstrap](platform/bootstrap/README.md).
-3. Set the GitHub variables and secrets named at the top of each workflow.
+3. Create the GitHub environments and settings in
+   [production.md](docs/production.md#github-settings), then [add your teams](docs/production.md#add-a-team).
 4. Teams add `teams/<team>/`, or copy `examples/team-repo` for their own repository.
 
 In a federated model each team usually has its own repository. This one keeps every team in one
@@ -92,6 +99,7 @@ More: [the model and the choices](docs/federation-model.md) ·
 Kong Gateway Enterprise 3.16.0.3 · decK 1.70.1 · Terraform 1.17.2, kong-gateway provider 1.4.1 ·
 oasdiff 1.38.0 · act 0.2.98. Everything is pinned by version, digest or commit.
 
-Not covered: Konnect, Dev Portal, Kong Operator, hybrid mode.
+Not covered: Konnect, an API catalog or Dev Portal, team-run data planes and their golden images,
+observability provisioning, Kong Operator, hybrid mode.
 
 Apache-2.0

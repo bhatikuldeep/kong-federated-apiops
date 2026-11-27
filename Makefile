@@ -1,4 +1,4 @@
-# Run from the repository root. Tools come from mise.toml (mise install). sso is optional (Part 3).
+# Run from the repository root. Tools come from mise.toml (mise install). sso is optional.
 .PHONY: up test sso down clean
 up:    ## Start dev and prod Kong, apply the platform, deploy every team
 	mise exec -- lab/lab.sh up

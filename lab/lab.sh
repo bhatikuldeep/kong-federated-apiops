@@ -55,15 +55,19 @@ token() { # env team|platform
 act_files() {
   { echo "KONG_ADDR_DEV=http://kong-dev:8001"; echo "KONG_ADDR_PROD=http://kong-prod:8001"
     echo "PROXY_URL_DEV=https://kong-dev:8443"; echo "PROXY_URL_PROD=https://kong-prod:8443"
-    echo "PROXY_INSECURE=true"; } > .lab/vars
+    echo "PROXY_INSECURE=true"; echo "KONG_ENABLED=true"; } > .lab/vars
   { echo "PLATFORM_TOKEN_DEV=$PLATFORM_TOKEN"; echo "PLATFORM_TOKEN_PROD=$PLATFORM_TOKEN"
     echo "SUPER_ADMIN_TOKEN_DEV=$KONG_ADMIN_TOKEN"; echo "SUPER_ADMIN_TOKEN_PROD=$KONG_ADMIN_TOKEN"
-    echo "TF_STATE_PG_CONN=postgres://kong:$PG_PASSWORD@postgres:5432/tfstate?sslmode=disable"
+    # One state database in the lab; in production each environment's connection reaches only its own state.
+    echo "TF_STATE_PG_CONN_DEV=postgres://kong:$PG_PASSWORD@postgres:5432/tfstate?sslmode=disable"
+    echo "TF_STATE_PG_CONN_PROD=postgres://kong:$PG_PASSWORD@postgres:5432/tfstate?sslmode=disable"
     if [[ ${1:-} == teams ]]; then
       for t in $(yq '.teams[].name' teams.yaml); do
         local T key; T=$(upper "$t"); key=$(eval echo "\$${T}_WEB_KEY")
         echo "KONG_TOKEN_${T}_DEV=$(token dev "$t")"; echo "KONG_TOKEN_${T}_PROD=$(token prod "$t")"
-        echo "TEAM_SECRETS_${T}={\"DECK_${T}_WEB_KEY\":\"$key\"}"; echo "SMOKE_KEY_${T}=$key"
+        for E in DEV PROD; do
+          echo "TEAM_SECRETS_${T}_${E}={\"DECK_${T}_WEB_KEY\":\"$key\"}"; echo "SMOKE_KEY_${T}_${E}=$key"
+        done
       done
     fi; } > .lab/secrets
   chmod 600 .lab/secrets
@@ -73,8 +77,21 @@ run_act() { # workflow file, then act args
   local wf=$1; shift
   # Never mount the working copy into a job: a checkout step would wipe it.
   for a in "$@"; do [[ $a == --bind* ]] && { echo "refusing to run act with --bind" >&2; exit 2; }; done
-  act workflow_dispatch -W ".github/workflows/$wf" --network fapi_default --pull=false \
-    -P "ubuntu-latest=$runner" --var-file .lab/vars --secret-file .lab/secrets "$@"
+  # act 0.2.98 can crash ("fatal error: concurrent map ...") when it starts the matrix jobs of a reusable
+  # workflow called with `secrets: inherit`. GitHub runs them on separate runners. Every workflow
+  # here is safe to run again (drift only reads; deploy and apply converge), so retry the crash.
+  local out rc attempt
+  for attempt in 1 2 3; do
+    out=$(mktemp); rc=0
+    act workflow_dispatch -W ".github/workflows/$wf" --network fapi_default --pull=false \
+      -P "ubuntu-latest=$runner" --var-file .lab/vars --secret-file .lab/secrets "$@" >"$out" 2>&1 || rc=$?
+    cat "$out"
+    if grep -q "fatal error: concurrent map" "$out"; then
+      rm -f "$out"; echo "act crashed (known act bug), run $attempt of 3; retrying" >&2; continue
+    fi
+    rm -f "$out"; return $rc
+  done
+  return 1
 }
 
 case "${1:-}" in

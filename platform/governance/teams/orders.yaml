@@ -10,14 +10,17 @@ rules:
       function: pattern
       functionOptions: {match: "^~?/orders([/$]|$)"}
   owned:
-    description: Every entity carries the team's tag or the platform's. Anything else was created
-      outside the pipelines.
+    description: Every entity carries the team's tag. Anything else was created outside the
+      pipelines. (The platform's global plugins are checked by global-plugins-are-mandatory.)
     given:
       - "$.services[*]"
       - "$..routes[*]"
-      - "$..plugins[*]"
+      - "$.services[*].plugins[*]"
+      - "$..routes[*].plugins[*]"
       - "$.consumers[*]"
+      - "$.consumers[*].plugins[*]"
       - "$.consumer_groups[*]"
+      - "$.consumer_groups[*].plugins[*]"
       - "$.upstreams[*]"
       - "$.certificates[*]"
       - "$.ca_certificates[*]"
@@ -27,13 +30,32 @@ rules:
       - "$.vaults[*]"
       - "$.partials[*]"
     severity: error
-    message: "created outside the pipelines (no team-orders or platform tag)"
+    message: "created outside the pipelines (no team-orders tag)"
     then:
       - {field: tags, function: defined}
       - field: tags
         function: schema
         functionOptions:
-          schema: {type: array, contains: {enum: [team-orders, platform]}}
+          schema: {type: array, contains: {const: team-orders}}
+  global-plugins-are-mandatory:
+    description: The only global plugins are the platform's mandatory ones, tagged platform and
+      scoped to nothing. Teams never ship global plugins (kong-rules), so any other is a hand edit.
+    given: "$.plugins[*]"
+    severity: error
+    message: "a global plugin that isn't one of the platform's mandatory plugins"
+    then:
+      - field: name
+        function: pattern
+        functionOptions: {match: "^(correlation-id|request-size-limiting|rate-limiting)$"}
+      - {field: tags, function: defined}
+      - field: tags
+        function: schema
+        functionOptions:
+          schema: {type: array, contains: {const: platform}}
+      - {field: service, function: undefined}
+      - {field: route, function: undefined}
+      - {field: consumer, function: undefined}
+      - {field: consumer_group, function: undefined}
   platform-tag-only-on-global-plugins:
     description: The platform's plugins are global. A plugin on a service, route or consumer that
       carries the platform tag was created to look like one.

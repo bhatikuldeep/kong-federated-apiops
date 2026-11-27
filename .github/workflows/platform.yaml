@@ -1,7 +1,9 @@
 # The platform pipeline: workspaces, access and mandatory plugins, with Terraform, run as the
-# ci-platform RBAC user (platform/bootstrap). Pull request: plan. Merge to main: apply dev, then
-# prod (prod waits for the reviewers of the prod environment).
-# Settings: variables KONG_ADDR_<ENV>; secrets PLATFORM_TOKEN_<ENV>, TF_STATE_PG_CONN.
+# ci-platform RBAC user (platform/bootstrap). Pull request: plan dev only, so no prod secret is
+# reachable from a branch. Merge to main: apply dev, then prod (prod waits for the reviewers of the
+# prod environment).
+# Settings, per GitHub environment (dev, prod): variable KONG_ADDR_<ENV>; secrets PLATFORM_TOKEN_<ENV>
+# and TF_STATE_PG_CONN_<ENV> (state for that environment only). Repository variable KONG_ENABLED=true.
 name: platform
 on:
   pull_request: {paths: ["platform/foundation/**", "teams.yaml"]}
@@ -13,19 +15,23 @@ permissions:
 
 jobs:
   terraform:
+    if: vars.KONG_ENABLED == 'true'
     strategy:
       max-parallel: 1
       matrix:
-        include: [{environment: dev, env: DEV}, {environment: prod, env: PROD}]
+        environment: ${{ fromJSON(github.event_name == 'pull_request' && '["dev"]' || '["dev","prod"]') }}
     runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
     environment: ${{ matrix.environment }}
-    concurrency: {group: "kong-platform-${{ matrix.environment }}", cancel-in-progress: false}
+    # Applies queue per environment; a pull request's plan never cancels a queued apply.
+    concurrency:
+      group: ${{ github.event_name == 'pull_request' && format('kong-platform-plan-{0}', github.run_id) || format('kong-platform-{0}', matrix.environment) }}
+      cancel-in-progress: false
     defaults:
       run: {working-directory: platform/foundation}
     env:
-      TF_VAR_admin_url: ${{ vars[format('KONG_ADDR_{0}', matrix.env)] }}
-      TF_VAR_admin_token: ${{ secrets[format('PLATFORM_TOKEN_{0}', matrix.env)] }}
-      PG_CONN_STR: ${{ secrets.TF_STATE_PG_CONN }}   # the Terraform state backend
+      TF_VAR_admin_url: ${{ vars[format('KONG_ADDR_{0}', matrix.environment == 'prod' && 'PROD' || 'DEV')] }}
+      TF_VAR_admin_token: ${{ secrets[format('PLATFORM_TOKEN_{0}', matrix.environment == 'prod' && 'PROD' || 'DEV')] }}
+      PG_CONN_STR: ${{ secrets[format('TF_STATE_PG_CONN_{0}', matrix.environment == 'prod' && 'PROD' || 'DEV')] }}
       TF_IN_AUTOMATION: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,6 +39,6 @@ jobs:
         with: {terraform_version: "1.17.2", terraform_wrapper: false}
       - run: terraform init -input=false
       - run: terraform workspace select -or-create ${{ matrix.environment }}
-      - run: terraform plan -input=false -out=tfplan
+      - run: terraform plan -input=false -lock-timeout=5m -out=tfplan
       - if: github.event_name != 'pull_request'
-        run: terraform apply -input=false tfplan
+        run: terraform apply -input=false -lock-timeout=5m tfplan

@@ -24,7 +24,10 @@ workflow() { # desc expected(pass|fail) workflow [act args]
   if [[ $want == pass && $rc == 0 ]] || [[ $want == fail && $rc != 0 ]]; then ok "$d (workflow $wf: ${want}ed)"
   else bad "$d" "workflow $wf exit $rc, want $want"; grep -E "❌|Error:" .lab/e2e-act.log | head -5 | sed 's/^/      /'; fi
 }
-failed_step() { grep -q -- "$2" .lab/e2e-act.log && ok "  $1" || bad "  $1" "no '$2' in the run"; }
+failed_step() { # keeps the run's act log when the expected message isn't in it
+  if grep -q -- "$2" .lab/e2e-act.log; then ok "  $1"
+  else local f; f=".lab/e2e-miss-$(date +%s).log"; cp .lab/e2e-act.log "$f"; bad "  $1" "no '$2' in the run, see $f"; fi
+}
 put_body() { yq -p json -o json -I0 '{"name": .name, "config": .config, "tags": .tags, "service": .service, "route": .route, "consumer": .consumer, "enabled": '"$1"'}'; }
 platform_plugin() { # url ws name -> json
   curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" "$1/$2/plugins?tags=platform" | yq -p json -o json -I0 ".data[] | select(.name == \"$3\")"
@@ -46,6 +49,12 @@ expect_code "payments creates a service in orders" 403 "$PAY_DEV" POST $DEV/orde
 expect_code "payments creates an RBAC user" 403 "$PAY_DEV" POST $DEV/payments/rbac/users '{"name":"intruder"}'
 expect_code "payments creates an RBAC role" 403 "$PAY_DEV" POST $DEV/payments/rbac/roles '{"name":"intruder"}'
 expect_code "payments creates a workspace" 403 "$PAY_DEV" POST $DEV/workspaces '{"name":"intruder"}'
+expect_code "payments creates a vault" 403 "$PAY_DEV" POST $DEV/payments/vaults '{"name":"env","prefix":"intruder"}'
+expect_code "payments creates a Kong Manager admin" 403 "$PAY_DEV" POST $DEV/payments/admins '{"username":"intruder","email":"intruder@example.com"}'
+expect_code "payments creates a group" 403 "$PAY_DEV" POST $DEV/payments/groups '{"name":"intruder"}'
+expect_code "payments reads the license" 403 "$PAY_DEV" GET $DEV/payments/licenses
+expect_code "payments creates an event hook" 403 "$PAY_DEV" POST $DEV/payments/event-hooks '{"source":"crud","event":"services","handler":"webhook","config":{"url":"https://x.example"}}'
+expect_code "payments generates a keyring key" 403 "$PAY_DEV" POST $DEV/payments/keyring/generate '{}'
 
 echo "== 2b. The team's people: read-only (role workspace-read-only; make sso assigns it from Keycloak)"
 VT=$(openssl rand -hex 20)
@@ -55,6 +64,7 @@ expect_code "they can read the payments workspace" 200 "$VT" GET $DEV/payments/s
 expect_code "they can't create a service" 403 "$VT" POST $DEV/payments/services '{"name":"x","url":"https://x.example"}'
 expect_code "they can't change the team's service" 403 "$VT" PUT $DEV/payments/services/team-payments '{"name":"team-payments","url":"https://x.example"}'
 expect_code "they can't read orders" 403 "$VT" GET $DEV/orders/services
+expect_code "they can't read the license" 403 "$VT" GET $DEV/payments/licenses
 code "$PLATFORM_TOKEN" DELETE $DEV/payments/rbac/users/probe-viewer >/dev/null
 
 echo "== 3. Mandatory plugins (dev). PUT is how decK and Terraform update a plugin."

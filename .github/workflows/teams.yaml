@@ -1,10 +1,7 @@
 # One repository for all teams: run the team pipeline for each team folder a change touches.
 # Pull request: plan against dev. Merge to main: deploy dev, then prod (prod waits for the
 # reviewers of the prod environment). workflow_dispatch: run one team by hand.
-#
-# Settings, per environment (DEV, PROD):
-#   variables KONG_ADDR_<ENV>, PROXY_URL_<ENV>
-#   secrets   KONG_TOKEN_<TEAM>_<ENV>, and per team TEAM_SECRETS_<TEAM>, SMOKE_KEY_<TEAM>
+# Settings: see team-pipeline.yaml (environment secrets and variables, read inside the environment).
 name: teams
 on:
   pull_request: {paths: ["teams/**", "platform/governance/**"]}
@@ -28,7 +25,7 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           TEAM: ${{ inputs.team }}
         run: |
-          if [ -n "$TEAM" ]; then echo "teams=[\"$TEAM\"]" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -n "$TEAM" ]; then echo "teams=$(jq -nc --arg t "$TEAM" '[$t]')" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "teams=$(git diff --name-only "$BASE" HEAD -- teams | cut -d/ -f2 | sort -u | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   dev:
@@ -40,13 +37,7 @@ jobs:
       team: ${{ matrix.team }}
       mode: ${{ github.event_name == 'pull_request' && 'plan' || 'deploy' }}
       environment: dev
-      kong-addr: ${{ vars.KONG_ADDR_DEV }}
-      proxy-url: ${{ vars.PROXY_URL_DEV }}
-      proxy-insecure: ${{ vars.PROXY_INSECURE == 'true' }}
-    secrets:
-      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_DEV', matrix.team)] }}
-      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
-      SMOKE_KEY: ${{ secrets[format('SMOKE_KEY_{0}', matrix.team)] }}
+    secrets: inherit
 
   prod:
     needs: [changed, dev]
@@ -57,10 +48,4 @@ jobs:
       team: ${{ matrix.team }}
       mode: deploy
       environment: prod
-      kong-addr: ${{ vars.KONG_ADDR_PROD }}
-      proxy-url: ${{ vars.PROXY_URL_PROD }}
-      proxy-insecure: ${{ vars.PROXY_INSECURE == 'true' }}
-    secrets:
-      KONG_TOKEN: ${{ secrets[format('KONG_TOKEN_{0}_PROD', matrix.team)] }}
-      TEAM_SECRETS: ${{ secrets[format('TEAM_SECRETS_{0}', matrix.team)] }}
-      SMOKE_KEY: ${{ secrets[format('SMOKE_KEY_{0}', matrix.team)] }}
+    secrets: inherit

@@ -5,7 +5,9 @@
 #   gives the built-in super-admin role a wildcard entity permission (every entity)
 #   creates user ci-platform with the super-admin role (its token: secret PLATFORM_TOKEN_<ENV>)
 # Not Terraform: Terraform runs as ci-platform, so it can't create its own identity.
-# Settings: variable KONG_ADDR_<ENV>; secrets SUPER_ADMIN_TOKEN_<ENV>, PLATFORM_TOKEN_<ENV>.
+# Settings, in the GitHub environment (dev or prod): variable KONG_ADDR_<ENV>; secrets
+# SUPER_ADMIN_TOKEN_<ENV> (kong_admin's token, the KONG_PASSWORD of the first migrations bootstrap)
+# and PLATFORM_TOKEN_<ENV> (a new random value: ci-platform's token).
 name: bootstrap
 on:
   workflow_dispatch:
@@ -20,10 +22,15 @@ jobs:
     runs-on: ${{ vars.KONG_RUNNER || 'ubuntu-latest' }}
     environment: ${{ inputs.environment }}
     env:
-      KONG_ADDR: ${{ inputs.environment == 'prod' && vars.KONG_ADDR_PROD || vars.KONG_ADDR_DEV }}
-      SUPER_ADMIN_TOKEN: ${{ inputs.environment == 'prod' && secrets.SUPER_ADMIN_TOKEN_PROD || secrets.SUPER_ADMIN_TOKEN_DEV }}
-      PLATFORM_TOKEN: ${{ inputs.environment == 'prod' && secrets.PLATFORM_TOKEN_PROD || secrets.PLATFORM_TOKEN_DEV }}
+      KONG_ADDR: ${{ vars[format('KONG_ADDR_{0}', inputs.environment == 'prod' && 'PROD' || 'DEV')] }}
+      SUPER_ADMIN_TOKEN: ${{ secrets[format('SUPER_ADMIN_TOKEN_{0}', inputs.environment == 'prod' && 'PROD' || 'DEV')] }}
+      PLATFORM_TOKEN: ${{ secrets[format('PLATFORM_TOKEN_{0}', inputs.environment == 'prod' && 'PROD' || 'DEV')] }}
     steps:
+      - name: Settings for this environment are set
+        run: |
+          for v in KONG_ADDR SUPER_ADMIN_TOKEN PLATFORM_TOKEN; do
+            [ -n "${!v}" ] || { echo "::error::$v is not set for ${{ inputs.environment }}"; exit 1; }
+          done
       - name: The super admin sees every entity
         run: >-
           curl --fail-with-body -sS -H "Kong-Admin-Token: $SUPER_ADMIN_TOKEN" "$KONG_ADDR/rbac/roles/super-admin/entities"
