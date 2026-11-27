@@ -1,0 +1,132 @@
+{
+  "realm": "lab",
+  "enabled": true,
+  "groups": [
+    {
+      "name": "payments-read-only",
+      "clientRoles": {
+        "kong-manager": [
+          "payments:workspace-read-only"
+        ]
+      }
+    },
+    {
+      "name": "orders-read-only",
+      "clientRoles": {
+        "kong-manager": [
+          "orders:workspace-read-only"
+        ]
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "kong-manager",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KONG_MANAGER_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://127.0.0.1:18001/auth"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:18002"
+      ],
+      "protocolMappers": [
+        {
+          "name": "kong roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "config": {
+            "usermodel.clientRoleMapping.clientId": "kong-manager",
+            "claim.name": "kong_roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "pay-reader@example.com",
+      "email": "pay-reader@example.com",
+      "emailVerified": true,
+      "firstName": "Pay",
+      "lastName": "Reader",
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-lab"
+      ],
+      "groups": [
+        "/payments-read-only"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LAB_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ord-reader@example.com",
+      "email": "ord-reader@example.com",
+      "emailVerified": true,
+      "firstName": "Ord",
+      "lastName": "Reader",
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-lab"
+      ],
+      "groups": [
+        "/orders-read-only"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LAB_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "no-group@example.com",
+      "email": "no-group@example.com",
+      "emailVerified": true,
+      "firstName": "No",
+      "lastName": "Group",
+      "enabled": true,
+      "realmRoles": [
+        "default-roles-lab"
+      ],
+      "groups": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${LAB_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "roles": {
+    "client": {
+      "kong-manager": [
+        {
+          "name": "payments:workspace-read-only",
+          "description": "Kong role workspace-read-only in workspace payments"
+        },
+        {
+          "name": "orders:workspace-read-only",
+          "description": "Kong role workspace-read-only in workspace orders"
+        }
+      ]
+    }
+  }
+}

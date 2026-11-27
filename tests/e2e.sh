@@ -47,11 +47,7 @@ expect_code "payments creates an RBAC user" 403 "$PAY_DEV" POST $DEV/payments/rb
 expect_code "payments creates an RBAC role" 403 "$PAY_DEV" POST $DEV/payments/rbac/roles '{"name":"intruder"}'
 expect_code "payments creates a workspace" 403 "$PAY_DEV" POST $DEV/workspaces '{"name":"intruder"}'
 
-echo "== 2b. The team's people: read-only (the role the payments-developers group grants)"
-# Group members come from the identity provider at Kong Manager login, so the probe user gets
-# the group's role directly.
-roles=$(curl -s -H "Kong-Admin-Token: $PLATFORM_TOKEN" $DEV/groups/payments-developers/roles | yq -p json '[.data[].rbac_role.name] | join(",")')
-[[ $roles == workspace-read-only ]] && ok "payments-developers maps to workspace-read-only" || bad "group role" "$roles"
+echo "== 2b. The team's people: read-only (role workspace-read-only; make sso assigns it from Keycloak)"
 VT=$(openssl rand -hex 20)
 code "$PLATFORM_TOKEN" POST $DEV/payments/rbac/users "{\"name\":\"probe-viewer\",\"user_token\":\"$VT\"}" >/dev/null
 expect_code "a person gets workspace-read-only in payments" 201 "$PLATFORM_TOKEN" POST $DEV/payments/rbac/users/probe-viewer/roles '{"roles":"workspace-read-only"}'

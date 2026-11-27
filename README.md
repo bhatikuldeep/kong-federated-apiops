@@ -13,7 +13,7 @@ spec. Nobody can touch another team's workspace or the platform's mandatory plug
 | Teams deploy only their spec and allowed plugins | `deck file lint`: central rulesets plus each team's own |
 | A breaking API change needs a new major version | `oasdiff` on pull requests |
 | Teams stay in their own workspace | one workspace and one pipeline RBAC user (token) per team |
-| People can look but not change anything in Kong Manager | a read-only `<team>-developers` group per team, for your IdP to map to |
+| People can look but not change anything in Kong Manager | role `workspace-read-only` per team, assigned by your IdP (`make sso` shows it with Keycloak) |
 | Nothing changes outside Git | a drift workflow every weekday morning |
 
 `make test` proves each rule, including the attempts that must fail.

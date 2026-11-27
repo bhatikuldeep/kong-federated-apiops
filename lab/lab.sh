@@ -3,7 +3,7 @@
 # two environments (dev, prod) of Kong Gateway Enterprise in Docker, the one-time bootstrap, the
 # platform workflow, then the teams workflow for every team. Called by make.
 #
-#   lab/lab.sh up | down | clean | act <workflow> [act args] | token <env> <team|platform>
+#   lab/lab.sh up | sso | down | clean | act <workflow> [act args] | token <env> <team|platform>
 #
 # act copies the repository into each job container (never --bind): a job can't change the
 # files here. Terraform state lives in the lab's Postgres (pg backend), not in the repository.
@@ -23,12 +23,19 @@ secrets() {
       echo "PAYMENTS_WEB_KEY=$(openssl rand -hex 16)"
       echo "ORDERS_WEB_KEY=$(openssl rand -hex 16)"; } > .env
   fi
+  if ! grep -q '^KC_ADMIN_PASSWORD=' .env; then
+    { echo "KC_ADMIN_PASSWORD=$(openssl rand -hex 16)"
+      echo "KC_CLIENT_SECRET=$(openssl rand -hex 24)"
+      echo "SSO_USER_PASSWORD=$(openssl rand -hex 12)"; } >> .env
+  fi
   set -a; . ./.env; set +a
 }
 
 compose() {
   [[ -f $lic ]] || { echo "no Kong Enterprise license at $lic (set KONG_LICENSE_FILE)" >&2; exit 1; }
-  KONG_LICENSE_DATA=$(cat "$lic") docker compose -f lab/compose.yaml "$@"
+  local files=(-f lab/compose.yaml)
+  [[ -f .lab/sso ]] && files+=(-f lab/compose.sso.yaml)   # after make sso
+  KONG_LICENSE_DATA=$(cat "$lic") docker compose "${files[@]}" "$@"
 }
 
 admin() { [[ $1 == dev ]] && echo http://127.0.0.1:18001 || echo http://127.0.0.1:19001; }
@@ -90,7 +97,18 @@ case "${1:-}" in
     done
     echo; echo "Kong dev:  proxy https://127.0.0.1:18443  Admin API http://127.0.0.1:18001  Kong Manager http://127.0.0.1:18002"
     echo "Kong prod: proxy https://127.0.0.1:19443  Admin API http://127.0.0.1:19001  Kong Manager http://127.0.0.1:19002"
-    echo "Kong Manager login: kong_admin, password = KONG_ADMIN_TOKEN in .env"
+    if [[ -f .lab/sso ]]; then echo "Kong Manager dev: sign in with Keycloak (make sso)"
+    else echo "Kong Manager login: kong_admin, password = KONG_ADMIN_TOKEN in .env"; fi
+    ;;
+  sso)
+    secrets
+    [[ -f .lab/bootstrapped ]] || { echo "run make up first" >&2; exit 1; }
+    touch .lab/sso
+    echo "=== Keycloak, and Kong Manager on dev with OpenID Connect"
+    compose up -d --wait
+    echo; echo "Kong Manager dev: http://127.0.0.1:18002, sign in with Keycloak"
+    echo "Users: pay-reader@example.com, ord-reader@example.com, no-group@example.com"
+    echo "Password: SSO_USER_PASSWORD in .env. Keycloak admin: http://127.0.0.1:18080 (admin, KC_ADMIN_PASSWORD)"
     ;;
   down) secrets; compose down ;;
   clean)
@@ -104,5 +122,5 @@ case "${1:-}" in
     ;;
   act) secrets; act_files teams; shift; run_act "$@" ;;
   token) secrets; token "${2:?env}" "${3:?team or platform}" ;;
-  *) echo "usage: lab/lab.sh up|down|clean|act <workflow> [args]|token <env> <team>" >&2; exit 2 ;;
+  *) echo "usage: lab/lab.sh up|sso|down|clean|act <workflow> [args]|token <env> <team>" >&2; exit 2 ;;
 esac
