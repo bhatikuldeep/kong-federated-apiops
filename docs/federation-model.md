@@ -46,8 +46,10 @@ Both use the same reusable workflow, so a team moves without changing its files.
 4. **Secrets and environments** in the team repository: `KONG_TOKEN_DEV`, `KONG_TOKEN_PROD`
    (`terraform output ci_tokens`), `TEAM_SECRETS`, `SMOKE_KEY`, and the `KONG_ADDR_*` /
    `PROXY_URL_*` variables. Give the `prod` environment the platform team as required reviewers.
-   With private repositories, add `REPO_READ_TOKEN` (read access to the platform repository):
-   the built-in token is ["limited to the repository that contains your workflow"](https://docs.github.com/en/actions/concepts/security/github_token).
+   If the platform repository is private, add `REPO_READ_TOKEN`: a fine-grained token with access
+   to the platform repository only and **Contents: read-only**. The built-in token is
+   ["limited to the repository that contains your workflow"](https://docs.github.com/en/actions/concepts/security/github_token),
+   so it reads the team repository but not the platform's.
 5. **Remove** `teams/<team>/` here. The team's workflow now runs plan on pull requests, deploy on
    merge and drift every weekday.
 
