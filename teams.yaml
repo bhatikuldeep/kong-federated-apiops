@@ -1,6 +1,9 @@
 # The team registry: the one file the platform team edits to onboard a team. Each team gets a
 # Kong workspace with the same name (Terraform, platform/foundation) and a rules file
 # (platform/governance/teams/<name>.yaml) that the team pipeline and the drift job lint against.
+# A team with its own repository gets `repository: <org>/<repo>`: Terraform still creates its
+# workspace and token here, while CI and drift in this repository skip it (its repository runs
+# them; docs/federation-model.md, "Split a team into its own repository").
 teams:
   - name: payments
   - name: orders

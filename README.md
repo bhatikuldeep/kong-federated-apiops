@@ -58,6 +58,10 @@ examples/team-repo/      a team with its own repository
 3. Set the GitHub variables and secrets named at the top of each workflow.
 4. Teams add `teams/<team>/`, or copy `examples/team-repo` for their own repository.
 
+In a federated model each team usually has its own repository. This one keeps every team in one
+place so a single clone runs the whole model;
+[split a team out](docs/federation-model.md#split-a-team-into-its-own-repository) when you adopt it.
+
 More: [the model and the choices](docs/federation-model.md) ·
 [running it in production](docs/production.md)
 

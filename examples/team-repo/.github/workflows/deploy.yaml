@@ -6,6 +6,7 @@ name: deploy
 on:
   pull_request: {}
   push: {branches: [main]}
+  schedule: [{cron: "17 6 * * 1-5"}]   # drift: does each environment still match this repository?
 
 permissions:
   contents: read
@@ -15,7 +16,7 @@ jobs:
     uses: example-org/kong-platform/.github/workflows/team-pipeline.yaml@v1.0.0
     with:
       team: payments
-      mode: ${{ github.event_name == 'pull_request' && 'plan' || 'deploy' }}
+      mode: ${{ github.event_name == 'pull_request' && 'plan' || github.event_name == 'schedule' && 'drift' || 'deploy' }}
       environment: dev
       kong-addr: ${{ vars.KONG_ADDR_DEV }}
       proxy-url: ${{ vars.PROXY_URL_DEV }}
@@ -26,14 +27,16 @@ jobs:
       KONG_TOKEN: ${{ secrets.KONG_TOKEN_DEV }}
       TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
       SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}   # only if the platform repository is private
 
   prod:
     needs: dev
-    if: github.event_name == 'push'
+    # deploy: only after dev succeeded; drift: check prod even when dev drifted
+    if: github.event_name == 'push' || (github.event_name == 'schedule' && !cancelled())
     uses: example-org/kong-platform/.github/workflows/team-pipeline.yaml@v1.0.0
     with:
       team: payments
-      mode: deploy
+      mode: ${{ github.event_name == 'schedule' && 'drift' || 'deploy' }}
       environment: prod
       kong-addr: ${{ vars.KONG_ADDR_PROD }}
       proxy-url: ${{ vars.PROXY_URL_PROD }}
@@ -44,3 +47,4 @@ jobs:
       KONG_TOKEN: ${{ secrets.KONG_TOKEN_PROD }}
       TEAM_SECRETS: ${{ secrets.TEAM_SECRETS }}
       SMOKE_KEY: ${{ secrets.SMOKE_KEY }}
+      REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}   # only if the platform repository is private

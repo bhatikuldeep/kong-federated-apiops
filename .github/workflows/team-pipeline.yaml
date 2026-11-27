@@ -22,6 +22,7 @@ on:
       KONG_TOKEN: {required: false, description: "the team pipeline's RBAC token for this environment"}
       TEAM_SECRETS: {required: false, description: 'JSON of DECK_ variables the team files use, e.g. {"DECK_WEB_KEY":"..."}'}
       SMOKE_KEY: {required: false, description: "a consumer key for the smoke test"}
+      REPO_READ_TOKEN: {required: false, description: "read access to the platform and team repositories when they're private and separate"}
 
 permissions:
   contents: read
@@ -36,10 +37,10 @@ jobs:
         if: inputs.platform-repository == ''
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.platform-repository != ''
-        with: {repository: "${{ inputs.platform-repository }}", ref: "${{ inputs.platform-ref }}"}
+        with: {repository: "${{ inputs.platform-repository }}", ref: "${{ inputs.platform-ref }}", token: "${{ secrets.REPO_READ_TOKEN || github.token }}"}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.team-repository != ''
-        with: {repository: "${{ inputs.team-repository }}", path: team}
+        with: {repository: "${{ inputs.team-repository }}", path: team, token: "${{ secrets.REPO_READ_TOKEN || github.token }}"}
       - uses: ./.github/actions/build-team
         with: {team: "${{ inputs.team }}", team-dir: "${{ inputs.team-repository != '' && 'team' || format('teams/{0}', inputs.team) }}"}
       # Pull requests: the prod build (with its environment patch) passes the rulesets before merge.
@@ -73,10 +74,10 @@ jobs:
         if: inputs.platform-repository == ''
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.platform-repository != ''
-        with: {repository: "${{ inputs.platform-repository }}", ref: "${{ inputs.platform-ref }}"}
+        with: {repository: "${{ inputs.platform-repository }}", ref: "${{ inputs.platform-ref }}", token: "${{ secrets.REPO_READ_TOKEN || github.token }}"}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.team-repository != ''
-        with: {repository: "${{ inputs.team-repository }}", path: team}
+        with: {repository: "${{ inputs.team-repository }}", path: team, token: "${{ secrets.REPO_READ_TOKEN || github.token }}"}
       - id: build
         uses: ./.github/actions/build-team
         with:
