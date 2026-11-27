@@ -47,6 +47,7 @@ Needs Docker, [mise](https://mise.jdx.dev) and a Kong Gateway Enterprise license
 mise install
 make up      # dev and prod Kong, then this repo's workflows, run locally with act
 make test    # break every rule on purpose
+make sso     # optional: Kong Manager sign-in with Keycloak (dev), then its checks
 make down    # stop, keep the data
 make clean   # remove everything
 ```
@@ -56,7 +57,8 @@ make clean   # remove everything
 | dev | https://127.0.0.1:18443 | http://127.0.0.1:18001 | http://127.0.0.1:18002 |
 | prod | https://127.0.0.1:19443 | http://127.0.0.1:19001 | http://127.0.0.1:19002 |
 
-Kong Manager login: `kong_admin`, password `KONG_ADMIN_TOKEN` from `.env`.
+Kong Manager login: `kong_admin`, password `KONG_ADMIN_TOKEN` from `.env`. After `make sso`, dev signs in
+with Keycloak (http://127.0.0.1:18080): `pay-reader@example.com`, password `SSO_USER_PASSWORD` from `.env`.
 To run one workflow again: `lab/lab.sh act <workflow>.yaml`; a team's token: `lab/lab.sh token dev <team>`.
 
 ## What's where
@@ -90,6 +92,6 @@ More: [the model and the choices](docs/federation-model.md) ·
 Kong Gateway Enterprise 3.16.0.3 · decK 1.70.1 · Terraform 1.17.2, kong-gateway provider 1.4.1 ·
 oasdiff 1.38.0 · act 0.2.98. Everything is pinned by version, digest or commit.
 
-Not covered: Konnect, Kong Manager SSO, Dev Portal, Kong Operator.
+Not covered: Konnect, Dev Portal, Kong Operator, hybrid mode.
 
 Apache-2.0
