@@ -8,6 +8,7 @@
 | Mandatory plugins | owns | read only (`403` on change) |
 | Central rulesets | owns | passes them |
 | Services, routes, own plugins, own rulesets | reviews the rules | owns |
+| People's access in Kong Manager | creates the roles; the IdP assigns them | read only (`workspace-read-only`) |
 | Production | sets reviewers | merges; prod waits |
 
 ## Workspace per team or one shared workspace?
